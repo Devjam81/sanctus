@@ -1576,6 +1576,16 @@
           <option value="3">Octave 3 (grave)</option>
           <option value="4" selected>Octave 4 (médium)</option>
           <option value="5">Octave 5 (aigu)</option>
+          <option value="6">Octave 6 (très aigu — laisse tes mains libres)</option>
+          <option value="7">Octave 7 (extrême — Stream Lights uniquement)</option>
+        </select>
+      </div>
+      <div class="control-group"><label>Vélocité MIDI</label>
+        <select id="led-velocity">
+          <option value="100" selected>100 (normal)</option>
+          <option value="60">60 (doux)</option>
+          <option value="20">20 (presque silencieux)</option>
+          <option value="1">1 (silencieux — Stream Lights only)</option>
         </select>
       </div>
       <div class="control-group"><label>Canal MIDI</label>
@@ -3143,7 +3153,8 @@ function randomizeRhythm(){
 const led = {
   url: 'http://jamled.local:5000',
   enabled: false, octave: 4,
-  channel: 2,  // Canal MIDI : 2 par défaut pour que le piano reste silencieux
+  channel: 2,
+  velocity: 100,  // vélocité MIDI envoyée (1-127). 1 = silencieux, 100 = normal
   mode: 'midi',
   blinkInterval: null, blinkOn: false,
   midiAccess: null,
@@ -3372,7 +3383,7 @@ async function ledSendChord(currentIdx){
 
   if (led.mode === 'midi') {
     led.lastSentNotes.forEach(n => midiSendNoteOff(n));
-    currentNotes.forEach(n => midiSendNoteOn(n, 100));
+    currentNotes.forEach(n => midiSendNoteOn(n, led.velocity));
     led.lastSentNotes = [...currentNotes];
     if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
   } else {
@@ -3459,6 +3470,12 @@ document.getElementById('led-clear').addEventListener('click', ledClear);
 document.getElementById('jamled-url').addEventListener('change', e => { led.url = e.target.value.trim(); });
 document.getElementById('led-octave').addEventListener('change', e => {
   led.octave = parseInt(e.target.value);
+  if (led.enabled && state.playing) ledSendChord(state.currentChordIdx);
+});
+
+document.getElementById('led-velocity').addEventListener('change', e => {
+  led.velocity = parseInt(e.target.value);
+  midiDebugLog(`◉ Vélocité MIDI : ${led.velocity} (${led.velocity === 1 ? 'silencieux' : led.velocity < 30 ? 'très doux' : led.velocity < 70 ? 'doux' : 'normal'})`, 'info');
   if (led.enabled && state.playing) ledSendChord(state.currentChordIdx);
 });
 
