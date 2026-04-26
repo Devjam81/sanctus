@@ -1555,9 +1555,35 @@
             <option value="active">Actives</option>
           </select>
         </div>
+        <div class="control-group"><label>Arpèges mélodiques <span id="prophetic-arpeggio-display" style="float: right; color: var(--gold-bright); font-family: 'JetBrains Mono', monospace;">25%</span></label>
+          <input type="range" id="prophetic-arpeggio" min="0" max="100" value="25"
+                 style="width: 100%; accent-color: var(--gold-bright); cursor: pointer; height: 1.5rem;">
+        </div>
+        <div class="control-group"><label>Style d'arpège</label>
+          <select id="prophetic-arpeggio-style">
+            <option value="random" selected>✦ Aléatoire (mélange)</option>
+            <option value="cascade">🌊 Cascade (descendant)</option>
+            <option value="ascending">🎵 Ascendant</option>
+            <option value="wave">〜 Vague (zigzag)</option>
+            <option value="bell">🔔 Cloche (octaves)</option>
+            <option value="harp">𓋹 Harpe (roulé)</option>
+          </select>
+        </div>
+        <div class="control-group"><label>🎼 Composition orchestrale</label>
+          <select id="prophetic-composition">
+            <option value="off">Désactivée (juste piano)</option>
+            <option value="light" selected>Légère (1-2 couches)</option>
+            <option value="rich">Riche (2-3 couches)</option>
+            <option value="full">Complète (toutes les couches)</option>
+          </select>
+        </div>
       </div>
       <div style="margin-top: 0.85rem; padding: 0.6rem 0.85rem; background: rgba(15, 10, 6, 0.4); border-left: 2px solid var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.85rem; color: var(--paper); opacity: 0.85; line-height: 1.5;">
-        🕊️ Le mode prophétique fait <strong>évoluer le jeu à chaque cycle</strong> — voicings différents, mélodies improvisées aux aigus, notes de passage. Toujours dans la mesure et la tonalité, mais <strong>jamais identique</strong>.
+        🕊️ Le mode prophétique fait <strong>évoluer le jeu à chaque cycle</strong> — voicings différents, mélodies improvisées aux aigus, notes de passage, arpèges célestes et <strong>orchestration unique à chaque session</strong>.
+      </div>
+      <div style="margin-top: 0.85rem; text-align: center;">
+        <button class="btn" id="prophetic-recompose" style="font-size: 0.75rem;">🎼 Recomposer l'orchestration</button>
+        <div id="composition-status" style="margin-top: 0.5rem; font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; min-height: 1rem;"></div>
       </div>
     </div>
   </section>
@@ -3089,7 +3115,9 @@ async function startPlayback(){
 
         // Mode prophétique : ajouter embellissements et notes de passage
         if (prophetic.enabled) {
+          playOrchestralLayers(chord, time, durSec);
           generateFlourish(chord, time, durSec, instrument);
+          generateArpeggio(chord, time, durSec, instrument);
           // Note de passage vers le prochain accord
           const nextIdx = (chordIdx + 1) % state.chords.length;
           const nextChord = state.chords[nextIdx];
@@ -3129,6 +3157,22 @@ async function startPlayback(){
   // Reset compteur prophétique pour démarrer frais
   prophetic.cycleCount = 0;
   prophetic.lastVoicingIdx = -1;
+  prophetic.lastArpeggioStyle = -1;
+  // ✦ Composer une orchestration unique pour cette session
+  composeOrchestration();
+  // Afficher la composition dans le panneau prophétique
+  if (prophetic.enabled && prophetic.composition !== 'off') {
+    const layers = Object.entries(prophetic.activeLayers)
+      .filter(([k, v]) => v)
+      .map(([k]) => {
+        const labels = { pad: '⟡ Pad', strings: '🎻 Strings', subBass: '◉ Sub-bass', harpRoll: '𓋹 Harpe roulé', harpDrone: '𓋹 Drone harpe' };
+        return labels[k] || k;
+      });
+    const status = document.getElementById('composition-status');
+    if (status && layers.length > 0) {
+      status.textContent = '✦ ' + layers.join(' · ');
+    }
+  }
   const btn = document.getElementById('play');
   btn.textContent = '■ Arrêter';
   btn.classList.add('playing');
@@ -3964,11 +4008,23 @@ document.getElementById('rhythm-volume-slider').addEventListener('input', e => {
    ============================================================ */
 const prophetic = {
   enabled: false,
-  voicings: 'subtle',     // 'off' | 'subtle' | 'active'
-  flourish: 0.30,         // probabilité 0-1 d'embellissement par accord
-  passing: 'subtle',      // 'off' | 'subtle' | 'active'
-  cycleCount: 0,          // compteur de cycle pour variations
-  lastVoicingIdx: -1
+  voicings: 'subtle',
+  flourish: 0.30,
+  passing: 'subtle',
+  arpeggio: 0.25,
+  arpeggioStyle: 'random',
+  composition: 'light',     // 'off' | 'light' | 'rich' | 'full'
+  // Couches actives pour la session courante (regenérées à chaque play)
+  activeLayers: {
+    pad: false,        // pad doux en fond
+    strings: false,    // ensemble strings
+    subBass: false,    // sub-bass profond
+    harpRoll: false,   // arpège harpe roulé doux
+    harpDrone: false   // drone tonique de harpe
+  },
+  cycleCount: 0,
+  lastVoicingIdx: -1,
+  lastArpeggioStyle: -1
 };
 
 // Génère un voicing différent à chaque appel selon le mode
@@ -4100,6 +4156,241 @@ function generatePassingNote(currentChord, nextChord, time, durationSec, instrum
   } catch(e){}
 }
 
+/* ─── ARPÈGES MÉLODIQUES — Gouttes de lumière qui descendent ─── */
+function generateArpeggio(chord, time, durationSec, instrument){
+  if (!prophetic.enabled || Math.random() > prophetic.arpeggio) return;
+  if (!instrument) return;
+
+  // Choisir le style d'arpège
+  let style = prophetic.arpeggioStyle;
+  if (style === 'random') {
+    // Choisir un style au hasard sans répéter le précédent
+    const styles = ['cascade', 'ascending', 'wave', 'bell', 'harp'];
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * styles.length);
+    } while (idx === prophetic.lastArpeggioStyle && styles.length > 1);
+    prophetic.lastArpeggioStyle = idx;
+    style = styles[idx];
+  }
+
+  // Construire les notes de l'accord sur 2 octaves (4 et 5)
+  const root = chord.notes[0];
+  const third = chord.notes[1];
+  const fifth = chord.notes[2];
+
+  let pattern = [];
+  const baseOct = 4;
+
+  switch(style) {
+    case 'cascade':
+      // 🌊 Cascade descendante : aigu → grave (gouttes qui tombent)
+      pattern = [
+        root + (baseOct + 2),  // Octave très aigue
+        fifth + (baseOct + 1),
+        third + (baseOct + 1),
+        root + (baseOct + 1),
+        fifth + baseOct,
+        third + baseOct
+      ];
+      break;
+
+    case 'ascending':
+      // 🎵 Ascendant : grave → aigu (montée vers le ciel)
+      pattern = [
+        root + baseOct,
+        third + baseOct,
+        fifth + baseOct,
+        root + (baseOct + 1),
+        third + (baseOct + 1),
+        fifth + (baseOct + 1)
+      ];
+      break;
+
+    case 'wave':
+      // 〜 Vague zigzag : alterne aigu et grave
+      pattern = [
+        root + baseOct,
+        fifth + (baseOct + 1),
+        third + baseOct,
+        root + (baseOct + 1),
+        fifth + baseOct,
+        third + (baseOct + 1)
+      ];
+      break;
+
+    case 'bell':
+      // 🔔 Cloche : octaves doublées avec espacement large
+      pattern = [
+        root + baseOct,
+        root + (baseOct + 2),
+        third + (baseOct + 1),
+        fifth + (baseOct + 1),
+        root + (baseOct + 2)
+      ];
+      break;
+
+    case 'harp':
+      // 𓋹 Harpe roulée : montée puis redescente fluide
+      pattern = [
+        root + baseOct,
+        third + baseOct,
+        fifth + baseOct,
+        root + (baseOct + 1),
+        third + (baseOct + 1),
+        root + (baseOct + 1),
+        fifth + baseOct
+      ];
+      break;
+  }
+
+  // Étaler le pattern sur 50 à 80% de la durée de l'accord
+  // (pas tout pour laisser respirer)
+  const arpDuration = durationSec * (0.5 + Math.random() * 0.3);
+  const startOffset = durationSec * (Math.random() * 0.15);  // léger décalage initial
+  const noteSpacing = arpDuration / pattern.length;
+
+  pattern.forEach((noteName, i) => {
+    // Vélocité douce avec courbe en cloche
+    const peak = Math.min(i, pattern.length - 1 - i);
+    const peakNorm = peak / (pattern.length / 2);
+    const velocity = 0.25 + peakNorm * 0.20 + Math.random() * 0.05;
+    // Petit jitter humanisant
+    const jitter = (Math.random() - 0.5) * 0.025;
+    const noteTime = time + startOffset + (i * noteSpacing) + jitter;
+    // Durée : staccato léger pour les arpèges descendants, plus tenu pour les ascendants
+    const noteDur = (style === 'cascade' || style === 'wave') ? '16n' : '8n';
+    try {
+      instrument.triggerAttackRelease(noteName, noteDur, noteTime, velocity);
+    } catch(e){}
+  });
+}
+
+/* ─── COMPOSITEUR ORCHESTRAL ─── */
+// Compose une orchestration aléatoire mais musicalement cohérente
+// Appelé à chaque démarrage de lecture
+function composeOrchestration(){
+  // Reset toutes les couches
+  prophetic.activeLayers = {
+    pad: false, strings: false, subBass: false,
+    harpRoll: false, harpDrone: false
+  };
+
+  if (!prophetic.enabled || prophetic.composition === 'off') return;
+
+  // Pool de combinaisons orchestrales prédéfinies (musicalement validées)
+  // Chaque combinaison = 1 ou plusieurs couches qui sonnent bien ensemble
+  const lightCombos = [
+    { pad: true },                           // juste pad doux
+    { strings: true },                       // juste strings
+    { harpDrone: true },                     // juste drone harpe (ambiance mystique)
+    { pad: true, harpRoll: true },           // pad + arpège harpe (souvent très beau)
+    { strings: true, subBass: true },        // strings avec basse profonde
+    { harpDrone: true, harpRoll: true }      // duo harpe complet
+  ];
+
+  const richCombos = [
+    { pad: true, strings: true },             // Bethel-style (pad + strings)
+    { pad: true, harpRoll: true, subBass: true },  // intimité avec basse
+    { strings: true, harpRoll: true },        // strings + harpe (orchestral épique)
+    { pad: true, harpDrone: true, harpRoll: true }, // mystique riche
+    { strings: true, subBass: true, harpRoll: true }, // pleine symphonie
+    { pad: true, strings: true, subBass: true }      // pad + strings + basse
+  ];
+
+  const fullCombos = [
+    { pad: true, strings: true, subBass: true, harpRoll: true },     // tout sauf drone
+    { pad: true, strings: true, harpDrone: true, harpRoll: true },   // tout sauf basse
+    { pad: true, strings: true, subBass: true, harpDrone: true, harpRoll: true }, // tout
+    { strings: true, subBass: true, harpRoll: true, harpDrone: true } // sans pad
+  ];
+
+  let pool;
+  if (prophetic.composition === 'light') pool = lightCombos;
+  else if (prophetic.composition === 'rich') pool = richCombos;
+  else pool = fullCombos;
+
+  const combo = pool[Math.floor(Math.random() * pool.length)];
+  Object.assign(prophetic.activeLayers, combo);
+
+  // Logger pour transparence
+  const layers = Object.entries(prophetic.activeLayers)
+    .filter(([k, v]) => v)
+    .map(([k, v]) => k);
+  if (typeof midiDebugLog === 'function') {
+    midiDebugLog(`✦ Composition : ${layers.join(' + ')}`, 'ok');
+  }
+  console.log('[Prophétique] Composition active :', layers);
+}
+
+// Joue les couches actives pour un accord donné — pendant la durée de l'accord
+function playOrchestralLayers(chord, time, durationSec){
+  if (!prophetic.enabled) return;
+
+  const layers = prophetic.activeLayers;
+  const root = chord.notes[0];
+  const third = chord.notes[1];
+  const fifth = chord.notes[2];
+  const dur = state.barsPerChord + 'm';
+
+  // ─── PAD doux en fond ───
+  if (layers.pad && padSynth) {
+    const padVoicing = [
+      root + '3',
+      third + '4',
+      fifth + '4'
+    ];
+    try { padSynth.triggerAttackRelease(padVoicing, dur, time, 0.55); } catch(e){}
+  }
+
+  // ─── STRINGS ensemble (3 couches : grave, médium, aigu) ───
+  if (layers.strings && stringsLo && stringsMid && stringsHi) {
+    try {
+      stringsLo.triggerAttackRelease([root + '2', fifth + '2'], dur, time, 0.5);
+      stringsMid.triggerAttackRelease([root + '3', third + '3', fifth + '3'], dur, time, 0.45);
+      stringsHi.triggerAttackRelease([third + '4', fifth + '4', root + '5'], dur, time, 0.4);
+    } catch(e){}
+  }
+
+  // ─── SUB-BASS profond (fondamentale très grave) ───
+  if (layers.subBass) {
+    if (stringsSubBass) {
+      try { stringsSubBass.triggerAttackRelease(root + '1', dur, time, 0.6); } catch(e){}
+    } else if (subBass) {
+      try { subBass.triggerAttackRelease(root + '1', dur, time, 0.6); } catch(e){}
+    }
+  }
+
+  // ─── HARPE DRONE (note tonique tenue à l'octave grave) ───
+  if (layers.harpDrone && harpDrone) {
+    try { harpDrone.triggerAttackRelease(root + '2', dur, time, 0.5); } catch(e){}
+  }
+
+  // ─── HARPE ROLL (arpège roulé doux qui se déclenche) ───
+  if (layers.harpRoll && harpSynth) {
+    // Pattern montant lent, prend ~70% de la durée de l'accord
+    const arpPattern = [
+      root + '3', third + '3', fifth + '3',
+      root + '4', third + '4', fifth + '4',
+      root + '5'
+    ];
+    const arpDuration = durationSec * 0.7;
+    const startOffset = durationSec * 0.05;
+    const noteSpacing = arpDuration / arpPattern.length;
+
+    arpPattern.forEach((noteName, i) => {
+      const velocity = 0.28 + (i / arpPattern.length) * 0.15;
+      const noteTime = time + startOffset + (i * noteSpacing) + (Math.random() - 0.5) * 0.02;
+      try { harpSynth.triggerAttackRelease(noteName, '4n', noteTime, velocity); } catch(e){}
+    });
+
+    // Résonance sympathique sur la fondamentale
+    if (harpResonance) {
+      try { harpResonance.triggerAttackRelease(root + '4', dur, time, 0.35); } catch(e){}
+    }
+  }
+}
+
 function propheticToggle(){
   prophetic.enabled = !prophetic.enabled;
   const btn = document.getElementById('prophetic-toggle');
@@ -4127,6 +4418,34 @@ document.getElementById('prophetic-flourish').addEventListener('input', e => {
 });
 document.getElementById('prophetic-passing').addEventListener('change', e => {
   prophetic.passing = e.target.value;
+});
+document.getElementById('prophetic-arpeggio').addEventListener('input', e => {
+  const pct = parseInt(e.target.value);
+  prophetic.arpeggio = pct / 100;
+  document.getElementById('prophetic-arpeggio-display').textContent = pct + '%';
+});
+document.getElementById('prophetic-arpeggio-style').addEventListener('change', e => {
+  prophetic.arpeggioStyle = e.target.value;
+  prophetic.lastArpeggioStyle = -1;  // reset pour ne pas répéter le précédent
+});
+document.getElementById('prophetic-composition').addEventListener('change', e => {
+  prophetic.composition = e.target.value;
+});
+
+document.getElementById('prophetic-recompose').addEventListener('click', () => {
+  composeOrchestration();
+  const layers = Object.entries(prophetic.activeLayers)
+    .filter(([k, v]) => v)
+    .map(([k]) => {
+      const labels = { pad: '⟡ Pad', strings: '🎻 Strings', subBass: '◉ Sub-bass', harpRoll: '𓋹 Harpe roulé', harpDrone: '𓋹 Drone harpe' };
+      return labels[k] || k;
+    });
+  const status = document.getElementById('composition-status');
+  if (layers.length === 0) {
+    status.textContent = '✦ Composition désactivée';
+  } else {
+    status.textContent = '✦ ' + layers.join(' · ');
+  }
 });
 
 document.getElementById('regenerate').addEventListener('click', regenerate);
