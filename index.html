@@ -887,6 +887,120 @@
     font-style: italic;
   }
 
+  /* ─── PIANO 88 TOUCHES ─── */
+  .piano-section { margin-bottom: 2rem; padding: 1rem 0; }
+
+  .piano-toggle-wrap { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+
+  .piano-container {
+    background: linear-gradient(180deg, rgba(15, 10, 6, 0.95), rgba(31, 24, 18, 0.9));
+    border: 1px solid rgba(184, 134, 11, 0.3);
+    padding: 1.5rem 1rem 2rem;
+    position: relative;
+    overflow: hidden;
+    display: none;
+  }
+
+  .piano-container.visible { display: block; animation: fadeUp 0.5s ease-out; }
+
+  .piano-container::before, .piano-container::after { content: ''; position: absolute; width: 20px; height: 20px; }
+  .piano-container::before { top: -1px; left: -1px; border-top: 2px solid var(--gold-bright); border-left: 2px solid var(--gold-bright); }
+  .piano-container::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--gold-bright); border-right: 2px solid var(--gold-bright); }
+
+  .piano-wrapper { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 0.5rem; }
+  .piano-wrapper::-webkit-scrollbar { height: 6px; }
+  .piano-wrapper::-webkit-scrollbar-track { background: rgba(15, 10, 6, 0.5); }
+  .piano-wrapper::-webkit-scrollbar-thumb { background: var(--gold-deep); border-radius: 3px; }
+
+  .piano { position: relative; height: 180px; width: 1404px; display: flex; margin: 0 auto; }
+
+  .key-white {
+    width: 27px; height: 180px;
+    background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
+    border: 1px solid #2a1f15;
+    border-radius: 0 0 4px 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: inset 0 -3px 8px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 0.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.7rem;
+    color: rgba(42, 31, 21, 0.4);
+  }
+
+  .key-white:hover { background: linear-gradient(180deg, #fbf0d6 0%, #f0dcb0 100%); }
+
+  .key-white.active {
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+    box-shadow: inset 0 -4px 12px rgba(122, 90, 31, 0.4), 0 0 20px var(--gold-bright);
+    color: var(--ink);
+    transform: translateY(2px);
+  }
+
+  .key-white.root {
+    background: linear-gradient(180deg, #ffd970 0%, #e8b840 100%);
+    box-shadow: inset 0 -4px 12px rgba(122, 90, 31, 0.6), 0 0 30px #ffd970, 0 0 60px rgba(255, 217, 112, 0.5);
+    color: var(--ink);
+  }
+
+  .key-black {
+    width: 16px; height: 110px;
+    background: linear-gradient(180deg, #1a1410 0%, #0a0604 100%);
+    border: 1px solid #000;
+    border-radius: 0 0 3px 3px;
+    position: absolute;
+    top: 0;
+    z-index: 2;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: inset 0 -2px 4px rgba(80, 60, 30, 0.3), 0 2px 4px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 0.4rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.55rem;
+    color: rgba(245, 230, 200, 0);
+  }
+
+  .key-black.active {
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.5), 0 0 16px var(--gold-bright);
+    color: var(--paper);
+    transform: translateY(2px);
+  }
+
+  .key-black.root {
+    background: linear-gradient(180deg, #ffd970 0%, #c9a155 100%);
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.4), 0 0 24px #ffd970, 0 0 48px rgba(255, 217, 112, 0.4);
+    color: var(--ink);
+  }
+
+  .note-label { opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+  .key-white.active .note-label, .key-white.root .note-label,
+  .key-black.active .note-label, .key-black.root .note-label {
+    opacity: 1; font-weight: 600;
+  }
+
+  .key-white.middle-c::before {
+    content: '✦';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold-bright);
+    font-size: 0.7rem;
+    line-height: 1;
+    text-shadow: 0 0 6px var(--gold-bright);
+  }
+
+  body.vigil .piano-section { display: block !important; }
+
   /* ─── MODE SOAKING ─── */
   body.soaking {
     --gold: #6b8aa8;
@@ -1284,6 +1398,17 @@
     <div class="rhythm-grid" id="rhythm-grid"></div>
   </section>
 
+  <section class="piano-section">
+    <div class="piano-toggle-wrap">
+      <button class="btn" id="piano-toggle">🎹 Afficher le clavier</button>
+    </div>
+    <div class="piano-container" id="piano-container">
+      <div class="piano-wrapper" id="piano-wrapper">
+        <div class="piano" id="piano"></div>
+      </div>
+    </div>
+  </section>
+
   <footer>
     <div class="verse verse-default">« Je chanterai à l'Éternel tant que je vivrai »</div>
     <div class="verse-ref verse-default">Psaume CIV · 33</div>
@@ -1389,6 +1514,164 @@ function toggleHarpStrings(enable){
     container.appendChild(m);
   }
 }
+
+/* ============================================================
+   PIANO 88 TOUCHES (A0 à C8 — comme un Yamaha P-S500)
+   ============================================================ */
+function buildPiano(){
+  const piano = document.getElementById('piano');
+  piano.innerHTML = '';
+
+  // Touches noires : pattern par octave (relatif au Do)
+  // Sur 7 touches blanches : noires entre les blanches 0-1, 1-2, 3-4, 4-5, 5-6
+  // Position des noires (en nombre de touches blanches depuis le début de l'octave)
+  const blackPositions = [0, 1, 3, 4, 5]; // Do#, Ré#, Fa#, Sol#, La#
+  const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const blackNotes = ['C#', 'D#', 'F#', 'G#', 'A#'];
+
+  // Le clavier 88 touches commence à La0 (A0) et finit à Do8 (C8)
+  // 52 touches blanches au total
+  // On place d'abord toutes les blanches, puis on superpose les noires en absolute
+
+  let whiteIndex = 0;
+
+  // Notes blanches en partant de A0 :
+  // Octave 0 : A B (2 blanches)
+  // Octaves 1-7 : C D E F G A B (7 blanches × 7 = 49 blanches)
+  // Octave 8 : C (1 blanche)
+  // Total : 2 + 49 + 1 = 52 ✓
+
+  const whiteSequence = []; // {note, octave}
+  whiteSequence.push({note:'A', octave:0});
+  whiteSequence.push({note:'B', octave:0});
+  for (let oct = 1; oct <= 7; oct++) {
+    whiteNotes.forEach(n => whiteSequence.push({note:n, octave:oct}));
+  }
+  whiteSequence.push({note:'C', octave:8});
+
+  // Créer toutes les touches blanches
+  whiteSequence.forEach((info, idx) => {
+    const key = document.createElement('div');
+    key.className = 'key-white';
+    key.dataset.note = info.note;
+    key.dataset.octave = info.octave;
+    const midi = noteToMidi(info.note, info.octave);
+    key.dataset.midi = midi;
+
+    // Marque pour le Do central (C4)
+    if (info.note === 'C' && info.octave === 4) key.classList.add('middle-c');
+
+    const label = document.createElement('span');
+    label.className = 'note-label';
+    label.textContent = NOTE_NAMES_FR[info.note] || info.note;
+    key.appendChild(label);
+
+    key.addEventListener('click', () => {
+      initAudio();
+      Tone.start();
+      piano_synth_preview(info.note + info.octave);
+    });
+
+    piano.appendChild(key);
+  });
+
+  // Maintenant les touches noires, positionnées en absolute
+  // Pour chaque touche blanche, on regarde si une noire vient APRÈS elle
+  whiteSequence.forEach((info, idx) => {
+    // Pas de noire après B et après E
+    if (info.note === 'B' || info.note === 'E') return;
+    // Pas de noire après la dernière blanche (C8)
+    if (idx === whiteSequence.length - 1) return;
+
+    let blackNote;
+    if (info.note === 'C') blackNote = 'C#';
+    else if (info.note === 'D') blackNote = 'D#';
+    else if (info.note === 'F') blackNote = 'F#';
+    else if (info.note === 'G') blackNote = 'G#';
+    else if (info.note === 'A') blackNote = 'A#';
+    else return;
+
+    const black = document.createElement('div');
+    black.className = 'key-black';
+    black.dataset.note = blackNote;
+    black.dataset.octave = info.octave;
+    const midi = noteToMidi(blackNote, info.octave);
+    black.dataset.midi = midi;
+    // Position : à cheval entre la blanche idx et idx+1
+    // La blanche idx commence à idx*27px et fait 27px de large
+    // On centre la noire sur la jonction : idx*27 + 27 - 8 (moitié largeur noire)
+    black.style.left = (idx * 27 + 27 - 8) + 'px';
+
+    const label = document.createElement('span');
+    label.className = 'note-label';
+    label.textContent = NOTE_NAMES_FR[blackNote] || blackNote;
+    black.appendChild(label);
+
+    black.addEventListener('click', () => {
+      initAudio();
+      Tone.start();
+      piano_synth_preview(blackNote + info.octave);
+    });
+
+    piano.appendChild(black);
+  });
+}
+
+function piano_synth_preview(noteWithOctave){
+  if (piano) piano.triggerAttackRelease(noteWithOctave, '2n');
+}
+
+function highlightPianoChord(chord){
+  // éteindre tout
+  document.querySelectorAll('.key-white, .key-black').forEach(k => {
+    k.classList.remove('active', 'root');
+  });
+
+  if (!chord) return;
+
+  // Allumer les notes de l'accord aux octaves de jeu (3-5)
+  const root = chord.notes[0];
+  chord.notes.forEach((noteName, idx) => {
+    const enharmonic = ENHARMONIC[noteName] || noteName;
+    [3, 4, 5].forEach(oct => {
+      // Aussi allumer la basse en octave 2
+      const octaves = idx === 0 ? [2, 3, 4, 5] : [3, 4, 5];
+      octaves.forEach(o => {
+        const key = document.querySelector(`.key-white[data-note="${enharmonic}"][data-octave="${o}"], .key-black[data-note="${enharmonic}"][data-octave="${o}"]`);
+        if (key) {
+          if (idx === 0) key.classList.add('root');
+          else key.classList.add('active');
+        }
+      });
+    });
+  });
+}
+
+// Toggle bouton afficher piano
+document.getElementById('piano-toggle').addEventListener('click', () => {
+  const container = document.getElementById('piano-container');
+  const btn = document.getElementById('piano-toggle');
+  container.classList.toggle('visible');
+  if (container.classList.contains('visible')) {
+    btn.textContent = '🎹 Cacher le clavier';
+    // Centrer la vue sur le Do central au premier affichage
+    setTimeout(() => {
+      const wrapper = document.getElementById('piano-wrapper');
+      const middleC = document.querySelector('.key-white.middle-c');
+      if (middleC && wrapper) {
+        wrapper.scrollLeft = middleC.offsetLeft - wrapper.clientWidth / 2 + 13;
+      }
+      // Allumer l'accord courant si en cours de lecture
+      if (state.chords[state.currentChordIdx]) {
+        highlightPianoChord(state.chords[state.currentChordIdx]);
+      }
+    }, 100);
+  } else {
+    btn.textContent = '🎹 Afficher le clavier';
+  }
+});
+
+buildPiano();
 
 // Mode veillée
 document.getElementById('vigil-toggle').addEventListener('click', () => {
@@ -1744,6 +2027,8 @@ function highlightChord(idx){
   });
   scrollToCurrentChord(idx);
   if (led.enabled) ledSendChord(idx);
+  // Allumer le piano visuel
+  highlightPianoChord(state.chords[idx]);
 }
 
 function scrollToCurrentChord(idx){
@@ -1962,6 +2247,8 @@ function stopPlayback(){
   document.getElementById('beat-num').textContent = '—';
   if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
   if (led.enabled) ledClear();
+  // Éteindre piano visuel
+  highlightPianoChord(null);
 }
 
 function regenerate(){
