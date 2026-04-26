@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sanctus — Atelier de louange</title>
+<title>Veni Spiritus — Atelier de louange</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Outfit:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
@@ -81,7 +81,7 @@
   .top-mark { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.4em; color: var(--gold); margin-bottom: 1rem; opacity: 0.8; }
   h1 {
     font-family: 'Cinzel', serif; font-weight: 500;
-    font-size: clamp(3.5rem, 9vw, 7rem);
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
     letter-spacing: 0.08em; line-height: 0.95;
     background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 50%, var(--gold-deep) 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -1412,17 +1412,43 @@
   <header>
     <div class="crest">
       <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Auréole extérieure -->
         <circle cx="40" cy="40" r="36" fill="none" stroke="#b8860b" stroke-width="1" opacity="0.6"/>
         <circle cx="40" cy="40" r="28" fill="none" stroke="#f4c430" stroke-width="1.5"/>
-        <path d="M40 12 L44 36 L68 40 L44 44 L40 68 L36 44 L12 40 L36 36 Z" fill="#f4c430"/>
-        <circle cx="40" cy="40" r="4" fill="#0f0a06"/>
-        <circle cx="40" cy="40" r="2" fill="#f4c430"/>
+        <!-- Rayons de feu -->
+        <g opacity="0.7">
+          <line x1="40" y1="6" x2="40" y2="14" stroke="#f4c430" stroke-width="1.5"/>
+          <line x1="40" y1="66" x2="40" y2="74" stroke="#f4c430" stroke-width="1.5"/>
+          <line x1="6" y1="40" x2="14" y2="40" stroke="#f4c430" stroke-width="1.5"/>
+          <line x1="66" y1="40" x2="74" y2="40" stroke="#f4c430" stroke-width="1.5"/>
+          <line x1="16" y1="16" x2="22" y2="22" stroke="#f4c430" stroke-width="1.2"/>
+          <line x1="58" y1="22" x2="64" y2="16" stroke="#f4c430" stroke-width="1.2"/>
+          <line x1="16" y1="64" x2="22" y2="58" stroke="#f4c430" stroke-width="1.2"/>
+          <line x1="58" y1="58" x2="64" y2="64" stroke="#f4c430" stroke-width="1.2"/>
+        </g>
+        <!-- Colombe stylisée -->
+        <g fill="#f4c430">
+          <!-- Corps -->
+          <ellipse cx="40" cy="42" rx="6" ry="9" transform="rotate(-10 40 42)"/>
+          <!-- Tête -->
+          <circle cx="44" cy="33" r="4"/>
+          <!-- Bec -->
+          <path d="M48 32 L51 31 L48 34 Z"/>
+          <!-- Aile gauche déployée -->
+          <path d="M36 38 Q26 32 22 40 Q28 42 34 44 Z"/>
+          <!-- Aile droite déployée -->
+          <path d="M44 40 Q54 38 58 46 Q52 47 46 47 Z"/>
+          <!-- Queue -->
+          <path d="M37 50 L33 56 L40 53 L42 56 L42 50 Z"/>
+        </g>
+        <!-- Petite étincelle au cœur -->
+        <circle cx="40" cy="42" r="1.5" fill="#fff" opacity="0.9"/>
       </svg>
     </div>
     <div class="top-mark">Atelier · Anno Domini · MMXXVI</div>
-    <h1>SANCTUS</h1>
+    <h1>VENI SPIRITUS</h1>
     <div class="ornament-line"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
-    <div class="subtitle">Rythmes &amp; accords pour la louange et l'adoration</div>
+    <div class="subtitle">Viens, Esprit · Atelier de louange &amp; d'adoration</div>
   </header>
 
   <section class="panel">
@@ -1572,8 +1598,8 @@
   </section>
 
   <footer>
-    <div class="verse verse-default">« Je chanterai à l'Éternel tant que je vivrai »</div>
-    <div class="verse-ref verse-default">Psaume CIV · 33</div>
+    <div class="verse verse-default">« L'Esprit et l'Épouse disent : Viens ! »</div>
+    <div class="verse-ref verse-default">Apocalypse XXII · 17</div>
     <div class="verse verse-prophetic">« L'Esprit du Seigneur, l'Éternel, est sur moi »</div>
     <div class="verse-ref verse-prophetic">Ésaïe LXI · 1</div>
     <div class="verse verse-soaking">« Demeurez en moi, et je demeurerai en vous »</div>
