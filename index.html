@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanctus — Atelier de louange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=Outfit:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  :root {
+    --ink: #0f0a06;
+    --ink-soft: #1f1812;
+    --paper: #f5ede0;
+    --paper-deep: #ebe0cc;
+    --gold: #b8860b;
+    --gold-bright: #f4c430;
+    --gold-deep: #8b6914;
+    --copper: #b87333;
+    --moss: #5a6b3f;
+    --vine: #8b1a1a;
+    --plum: #4a1d3a;
+    --azure: #1e3a5f;
+    --soft: #6b5d4d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    position: relative;
+  }
+  .stained-glass { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .stained-glass svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .glass-pane { transform-origin: center; animation: slow-shimmer 12s ease-in-out infinite; }
+  .glass-pane:nth-child(2n) { animation-delay: -3s; animation-duration: 14s; }
+  .glass-pane:nth-child(3n) { animation-delay: -6s; animation-duration: 16s; }
+  .glass-pane:nth-child(5n) { animation-delay: -9s; animation-duration: 18s; }
+  @keyframes slow-shimmer { 0%,100% { opacity: 0.55; } 50% { opacity: 0.85; } }
+
+  .light-ray {
+    position: fixed; top: -10%; width: 120px; height: 140%;
+    background: linear-gradient(180deg, transparent 0%, rgba(244,196,48,0.08) 30%, rgba(244,196,48,0.15) 50%, rgba(244,196,48,0.08) 70%, transparent 100%);
+    transform: rotate(8deg); filter: blur(20px); pointer-events: none; z-index: 1;
+    animation: ray-drift 20s ease-in-out infinite;
+  }
+  .light-ray:nth-child(1) { left: 10%; animation-delay: 0s; }
+  .light-ray:nth-child(2) { left: 45%; animation-delay: -7s; }
+  .light-ray:nth-child(3) { left: 75%; animation-delay: -14s; }
+  @keyframes ray-drift {
+    0%,100% { transform: rotate(8deg) translateX(0); opacity: 0.6; }
+    50% { transform: rotate(10deg) translateX(40px); opacity: 0.9; }
+  }
+
+  .particles { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+  .particle {
+    position: absolute; width: 3px; height: 3px;
+    background: var(--gold-bright); border-radius: 50%;
+    box-shadow: 0 0 8px var(--gold-bright); opacity: 0;
+    animation: float-up linear infinite;
+  }
+  @keyframes float-up {
+    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10% { opacity: 0.8; } 90% { opacity: 0.8; }
+    100% { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+  }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 3rem 2rem 6rem; position: relative; z-index: 10; }
+
+  header { text-align: center; padding: 4rem 0 3rem; position: relative; }
+  .crest { width: 80px; height: 80px; margin: 0 auto 2rem; }
+  .crest svg { width: 100%; height: 100%; animation: crest-pulse 4s ease-in-out infinite; }
+  @keyframes crest-pulse {
+    0%,100% { filter: drop-shadow(0 0 8px rgba(244,196,48,0.4)); }
+    50% { filter: drop-shadow(0 0 24px rgba(244,196,48,0.8)); }
+  }
+  .top-mark { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.4em; color: var(--gold); margin-bottom: 1rem; opacity: 0.8; }
+  h1 {
+    font-family: 'Cinzel', serif; font-weight: 500;
+    font-size: clamp(3.5rem, 9vw, 7rem);
+    letter-spacing: 0.08em; line-height: 0.95;
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 50%, var(--gold-deep) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 40px rgba(244,196,48,0.2); margin-bottom: 1rem;
+  }
+  .subtitle { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.3rem; color: var(--paper); opacity: 0.7; letter-spacing: 0.05em; }
+  .ornament-line { display: flex; align-items: center; justify-content: center; gap: 1rem; margin: 2rem auto; max-width: 400px; }
+  .ornament-line .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .ornament-line .diamond { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 12px var(--gold-bright); }
+
+  .panel {
+    background: rgba(31,24,18,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(184,134,11,0.3); padding: 2.5rem; margin-bottom: 2rem; position: relative;
+  }
+  .panel::before, .panel::after { content: ''; position: absolute; width: 20px; height: 20px; }
+  .panel::before { top: -1px; left: -1px; border-top: 2px solid var(--gold-bright); border-left: 2px solid var(--gold-bright); }
+  .panel::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--gold-bright); border-right: 2px solid var(--gold-bright); }
+
+  .panel-label {
+    font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--gold-bright); margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .panel-label::before, .panel-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(184,134,11,0.5), transparent); }
+  .panel-label::before { max-width: 60px; }
+
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+  .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+  .control-group label { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); opacity: 0.85; }
+
+  select, input[type="number"], input[type="text"] {
+    background: rgba(15,10,6,0.8); border: 1px solid rgba(184,134,11,0.4);
+    padding: 0.85rem 1rem; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
+    color: var(--paper); cursor: pointer; transition: all 0.3s ease; width: 100%;
+  }
+  select:hover, input:hover { border-color: var(--gold-bright); background: rgba(15,10,6,1); }
+  select:focus, input:focus {
+    outline: none; border-color: var(--gold-bright);
+    box-shadow: 0 0 0 3px rgba(244,196,48,0.15), inset 0 0 20px rgba(244,196,48,0.05);
+  }
+  select option { background: var(--ink); color: var(--paper); }
+
+  .progression-stage {
+    background: radial-gradient(ellipse at center, rgba(31,24,18,0.9) 0%, rgba(15,10,6,0.95) 100%);
+    border: 1px solid rgba(184,134,11,0.3); padding: 4rem 2rem; margin-bottom: 2rem;
+    position: relative; overflow: hidden;
+  }
+  .progression-stage::before {
+    content: ''; position: absolute; top: 50%; left: 50%; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(244,196,48,0.08) 0%, transparent 60%);
+    transform: translate(-50%,-50%); pointer-events: none; animation: halo-breathe 6s ease-in-out infinite;
+  }
+  @keyframes halo-breathe {
+    0%,100% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 0.7; transform: translate(-50%,-50%) scale(1.1); }
+  }
+
+  .key-display {
+    text-align: center; font-family: 'Cinzel', serif; font-size: 0.85rem;
+    color: var(--gold); margin-bottom: 3rem; letter-spacing: 0.3em;
+    text-transform: uppercase; position: relative; z-index: 2;
+  }
+  .key-display strong { color: var(--gold-bright); font-weight: 600; }
+  .key-display .sep { margin: 0 1rem; opacity: 0.4; }
+
+  .chord-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; position: relative; z-index: 2; }
+  .chord-card {
+    flex: 1; min-width: 130px; max-width: 200px; aspect-ratio: 3/4;
+    background: linear-gradient(180deg, rgba(31,24,18,0.9), rgba(15,10,6,0.95));
+    border: 1px solid rgba(184,134,11,0.4);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 1.5rem 1rem; position: relative;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; overflow: hidden;
+  }
+  .chord-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(244,196,48,0.15), transparent 70%);
+    opacity: 0; transition: opacity 0.3s ease;
+  }
+  .chord-card:hover::before { opacity: 1; }
+  .chord-card .roman-tag { position: absolute; top: 0.75rem; left: 0.75rem; font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--gold); letter-spacing: 0.15em; }
+  .chord-card .num-tag { position: absolute; bottom: 0.75rem; right: 0.75rem; font-family: 'Cinzel', serif; font-size: 0.65rem; color: var(--soft); letter-spacing: 0.1em; }
+  .chord-card .chord-name {
+    font-family: 'Cinzel', serif; font-size: 2.8rem; font-weight: 500;
+    color: var(--paper); line-height: 1; margin-bottom: 0.75rem;
+    text-shadow: 0 0 20px rgba(244,196,48,0.3); transition: all 0.4s ease;
+  }
+  .chord-card .chord-quality { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.95rem; color: var(--gold); opacity: 0.8; }
+  .chord-card .chord-notes { font-family: 'Cormorant Garamond', serif; font-size: 0.85rem; color: var(--paper); opacity: 0.5; margin-top: 1rem; letter-spacing: 0.05em; text-align: center; }
+  .chord-card.active {
+    background: linear-gradient(180deg, rgba(244,196,48,0.2), rgba(184,134,11,0.1));
+    border-color: var(--gold-bright);
+    transform: translateY(-12px) scale(1.05);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 80px rgba(244,196,48,0.3), inset 0 0 40px rgba(244,196,48,0.1);
+  }
+  .chord-card.active .chord-name {
+    color: var(--gold-bright); text-shadow: 0 0 30px var(--gold-bright);
+    animation: chord-pulse 0.8s ease-out;
+  }
+  @keyframes chord-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
+  .chord-card.active .chord-notes { color: var(--gold-bright); opacity: 0.9; }
+  .chord-card.active .roman-tag { color: var(--gold-bright); }
+
+  .transport { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 2rem 0; flex-wrap: wrap; }
+  .btn {
+    background: rgba(31,24,18,0.8); border: 1px solid rgba(184,134,11,0.5);
+    padding: 0.95rem 2rem; font-family: 'Cinzel', serif; font-size: 0.8rem;
+    font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--paper); cursor: pointer; transition: all 0.3s ease;
+    position: relative; overflow: hidden;
+  }
+  .btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(244,196,48,0.2), transparent);
+    transform: translateX(-100%); transition: transform 0.6s ease;
+  }
+  .btn:hover { border-color: var(--gold-bright); color: var(--gold-bright); box-shadow: 0 0 20px rgba(244,196,48,0.2); }
+  .btn:hover::before { transform: translateX(100%); }
+  .btn-primary {
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+    color: var(--ink); border-color: var(--gold-bright);
+    padding: 1.1rem 3rem; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(184,134,11,0.4);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+    color: var(--ink); transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(244,196,48,0.5);
+  }
+  .btn-primary.playing {
+    background: linear-gradient(180deg, var(--vine) 0%, #5a0f0f 100%);
+    border-color: #c44; color: var(--paper);
+    animation: playing-glow 1.5s ease-in-out infinite;
+  }
+  @keyframes playing-glow {
+    0%,100% { box-shadow: 0 0 20px rgba(196,68,68,0.4); }
+    50% { box-shadow: 0 0 40px rgba(196,68,68,0.8); }
+  }
+
+  .scroll-stage {
+    background: radial-gradient(ellipse at center, rgba(15,10,6,0.98) 0%, var(--ink) 100%);
+    color: var(--paper); padding: 3rem 0; position: relative; overflow: hidden;
+    border: 1px solid rgba(184,134,11,0.3); margin-bottom: 2rem; height: 200px;
+  }
+  .scroll-stage::before, .scroll-stage::after { content: ''; position: absolute; top: 0; bottom: 0; width: 200px; z-index: 2; pointer-events: none; }
+  .scroll-stage::before { left: 0; background: linear-gradient(90deg, var(--ink) 0%, transparent 100%); }
+  .scroll-stage::after { right: 0; background: linear-gradient(-90deg, var(--ink) 0%, transparent 100%); }
+
+  .scroll-cursor {
+    position: absolute; left: 50%; top: 10%; bottom: 10%; width: 2px;
+    background: linear-gradient(180deg, transparent, var(--gold-bright) 30%, var(--gold-bright) 70%, transparent);
+    box-shadow: 0 0 24px var(--gold-bright), 0 0 48px rgba(244,196,48,0.4);
+    z-index: 3; transform: translateX(-50%);
+  }
+  .scroll-cursor::before, .scroll-cursor::after {
+    content: ''; position: absolute; left: 50%; width: 12px; height: 12px;
+    background: var(--gold-bright); transform: translateX(-50%) rotate(45deg);
+    box-shadow: 0 0 16px var(--gold-bright);
+  }
+  .scroll-cursor::before { top: -6px; }
+  .scroll-cursor::after { bottom: -6px; }
+
+  .scroll-track {
+    display: flex; gap: 4rem; align-items: center; height: 100%;
+    will-change: transform; padding: 0 50%;
+    transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .scroll-chord {
+    font-family: 'Cinzel', serif; font-size: 4rem; font-weight: 500;
+    color: rgba(245,237,224,0.2);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0; text-align: center; min-width: 120px; position: relative;
+  }
+  .scroll-chord small {
+    display: block; font-family: 'Cormorant Garamond', serif; font-size: 1rem;
+    font-style: italic; letter-spacing: 0.1em; margin-top: 0.5rem; opacity: 0.6;
+  }
+  .scroll-chord.current {
+    color: var(--gold-bright);
+    text-shadow: 0 0 40px var(--gold-bright), 0 0 80px rgba(244,196,48,0.4);
+    transform: scale(1.3);
+  }
+  .scroll-chord.next { color: rgba(245,237,224,0.6); }
+  .scroll-chord.distant-1 { color: rgba(245,237,224,0.35); }
+  .scroll-chord.distant-2 { color: rgba(245,237,224,0.15); }
+
+  .count-display {
+    text-align: center; margin: 1.5rem 0; font-family: 'Cinzel', serif;
+    font-size: 0.85rem; color: var(--gold); letter-spacing: 0.3em; text-transform: uppercase;
+  }
+  .count-display .beat-num {
+    color: var(--gold-bright); font-size: 1.4rem; font-weight: 600;
+    margin: 0 0.5rem; text-shadow: 0 0 12px var(--gold-bright);
+  }
+
+  .beat-pulse { display: flex; justify-content: center; gap: 1.5rem; margin: 1.5rem 0; }
+  .beat-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: rgba(184,134,11,0.3); border: 1px solid rgba(184,134,11,0.5);
+    transition: all 0.1s ease;
+  }
+  .beat-dot.active {
+    background: var(--gold-bright); border-color: var(--gold-bright);
+    box-shadow: 0 0 24px var(--gold-bright), 0 0 48px rgba(244,196,48,0.5);
+    transform: scale(1.5);
+  }
+  .beat-dot.downbeat.active { transform: scale(1.8); }
+
+  .rhythm-grid { display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; align-items: center; }
+  .rhythm-row { display: contents; }
+  .rhythm-label {
+    font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gold);
+    text-transform: uppercase; letter-spacing: 0.2em; padding-right: 1rem;
+    border-right: 1px solid rgba(184,134,11,0.3);
+  }
+  .rhythm-cells { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; }
+  .cell {
+    aspect-ratio: 1; background: rgba(31,24,18,0.6);
+    border: 1px solid rgba(184,134,11,0.2); cursor: pointer;
+    transition: all 0.15s ease; position: relative;
+  }
+  .cell:nth-child(4n+1) { border-left: 2px solid rgba(184,134,11,0.5); }
+  .cell:hover { border-color: var(--gold); background: rgba(184,134,11,0.2); }
+  .cell.on { background: var(--copper); border-color: var(--copper); }
+  .cell.on.kick { background: var(--gold-bright); border-color: var(--gold-bright); box-shadow: 0 0 8px rgba(244,196,48,0.4); }
+  .cell.on.snare { background: var(--vine); border-color: var(--vine); }
+  .cell.on.hat { background: var(--moss); border-color: var(--moss); }
+  .cell.on.shaker { background: var(--copper); border-color: var(--copper); }
+  .cell.beat {
+    box-shadow: 0 0 0 2px var(--gold-bright), 0 0 16px var(--gold-bright);
+    transform: scale(1.2); z-index: 5;
+  }
+
+  #led-status { margin-top: 1.5rem; text-align: center; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; }
+  .indicator {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--soft); margin-right: 0.75rem; vertical-align: middle;
+    transition: all 0.3s ease;
+  }
+  .indicator.active { animation: indicator-pulse 1s ease-in-out infinite; }
+  @keyframes indicator-pulse {
+    0%,100% { box-shadow: 0 0 8px currentColor; }
+    50% { box-shadow: 0 0 24px currentColor; }
+  }
+
+  footer {
+    text-align: center; margin-top: 5rem; padding-top: 3rem;
+    border-top: 1px solid rgba(184,134,11,0.2); position: relative;
+  }
+  footer::before {
+    content: '✦'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--gold-bright); padding: 0 1rem; font-size: 1rem;
+  }
+  .verse {
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.4rem;
+    color: var(--paper); opacity: 0.85; margin-bottom: 0.5rem; letter-spacing: 0.02em;
+  }
+  .verse-ref { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gold); letter-spacing: 0.3em; text-transform: uppercase; }
+
+  @media (max-width: 768px) {
+    .container { padding: 2rem 1rem 4rem; }
+    .rhythm-grid { grid-template-columns: 1fr; }
+    .rhythm-label { border-right: none; border-bottom: 1px solid rgba(184,134,11,0.3); padding: 0 0 0.5rem; }
+    .scroll-chord { font-size: 2.5rem; }
+    .chord-card { min-width: 100px; }
+    .chord-card .chord-name { font-size: 2rem; }
+    h1 { letter-spacing: 0.04em; }
+  }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  header, .panel, .progression-stage, .scroll-stage, .transport, .count-display {
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  header { animation-delay: 0s; }
+  .panel:nth-of-type(1) { animation-delay: 0.15s; }
+  .progression-stage { animation-delay: 0.3s; }
+  .transport { animation-delay: 0.45s; }
+  .count-display { animation-delay: 0.5s; }
+  .scroll-stage { animation-delay: 0.6s; }
+
+  /* Pastilles port MIDI */
+  .midi-port {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    background: rgba(15, 10, 6, 0.8);
+    border: 1px solid rgba(184, 134, 11, 0.4);
+    cursor: pointer;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+    color: var(--paper);
+    transition: all 0.2s ease;
+  }
+  .midi-port:hover { border-color: var(--gold-bright); }
+  .midi-port input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border: 1px solid var(--gold);
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+  }
+  .midi-port input[type="checkbox"]:checked {
+    background: var(--gold-bright);
+    border-color: var(--gold-bright);
+  }
+  .midi-port input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    color: var(--ink);
+    font-size: 11px;
+    top: -2px; left: 1px;
+    font-weight: bold;
+  }
+  .midi-port.active {
+    border-color: var(--gold-bright);
+    background: rgba(184, 134, 11, 0.15);
+  }
+  .midi-port .port-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--gold);
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--ink-soft); }
+  ::-webkit-scrollbar-thumb { background: var(--gold-deep); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+  /* ─── MODE PROPHÉTIQUE ─── */
+  body.prophetic {
+    --gold: #c44a1a;
+    --gold-bright: #ff6b1a;
+    --gold-deep: #6b1a0a;
+  }
+
+  body.prophetic .stained-glass { filter: hue-rotate(-30deg) saturate(1.4); }
+
+  body.prophetic .light-ray {
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(255, 107, 26, 0.12) 30%,
+      rgba(196, 74, 26, 0.2) 50%,
+      rgba(255, 107, 26, 0.12) 70%,
+      transparent 100%);
+    animation: ray-drift-prophetic 8s ease-in-out infinite;
+    filter: blur(28px);
+  }
+
+  @keyframes ray-drift-prophetic {
+    0%,100% { transform: rotate(8deg) translateX(0); opacity: 0.5; }
+    25% { transform: rotate(12deg) translateX(20px); opacity: 0.95; }
+    50% { transform: rotate(6deg) translateX(60px); opacity: 0.7; }
+    75% { transform: rotate(14deg) translateX(30px); opacity: 1; }
+  }
+
+  /* Étincelles braises */
+  .ember {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: #ff6b1a;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ff6b1a, 0 0 24px #c44a1a;
+    opacity: 0;
+    animation: ember-rise linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes ember-rise {
+    0% { transform: translateY(100vh) translateX(0) scale(0.5); opacity: 0; }
+    8% { opacity: 1; transform: translateY(80vh) translateX(10px) scale(1); }
+    50% { transform: translateY(40vh) translateX(-15px) scale(0.9); opacity: 0.9; }
+    100% { transform: translateY(-10vh) translateX(20px) scale(0.3); opacity: 0; }
+  }
+
+  /* Brume mystique en bas */
+  body.prophetic::after {
+    content: '';
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 40vh;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(196, 74, 26, 0.15) 0%,
+      rgba(139, 26, 26, 0.08) 30%,
+      transparent 70%);
+    pointer-events: none;
+    z-index: 1;
+    animation: mist-shift 14s ease-in-out infinite;
+  }
+
+  @keyframes mist-shift {
+    0%,100% { opacity: 0.6; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-20px); }
+  }
+
+  /* En-tête prophétique */
+  body.prophetic h1 {
+    background: linear-gradient(180deg, #ffb84d 0%, #ff6b1a 50%, #6b1a0a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 0 60px rgba(255, 107, 26, 0.4);
+    animation: prophetic-tremor 4s ease-in-out infinite;
+  }
+
+  @keyframes prophetic-tremor {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-1px); }
+    50% { transform: translateX(0); }
+    75% { transform: translateX(1px); }
+  }
+
+  body.prophetic .crest svg {
+    animation: crest-prophetic 3s ease-in-out infinite;
+  }
+
+  @keyframes crest-prophetic {
+    0%,100% { filter: drop-shadow(0 0 12px rgba(255, 107, 26, 0.5)); transform: scale(1) rotate(0deg); }
+    50% { filter: drop-shadow(0 0 32px rgba(255, 107, 26, 1)); transform: scale(1.05) rotate(2deg); }
+  }
+
+  body.prophetic .top-mark::before { content: '🜂 '; opacity: 0.7; }
+  body.prophetic .top-mark::after { content: ' 🜂'; opacity: 0.7; }
+  body.prophetic .top-mark { color: #ff8c42; }
+
+  /* Cartes accord en mode prophétique */
+  body.prophetic .chord-card {
+    border-color: rgba(196, 74, 26, 0.5);
+  }
+
+  body.prophetic .chord-card.active {
+    background: linear-gradient(180deg, rgba(255, 107, 26, 0.25), rgba(139, 26, 26, 0.15));
+    border-color: #ff6b1a;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.7),
+      0 0 100px rgba(255, 107, 26, 0.5),
+      inset 0 0 50px rgba(255, 107, 26, 0.15);
+    animation: prophetic-card-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes prophetic-card-pulse {
+    0%,100% { box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 80px rgba(255,107,26,0.4), inset 0 0 40px rgba(255,107,26,0.1); }
+    50% { box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 140px rgba(255,107,26,0.7), inset 0 0 60px rgba(255,107,26,0.2); }
+  }
+
+  body.prophetic .chord-card.active .chord-name {
+    color: #ffb84d;
+    text-shadow: 0 0 40px #ff6b1a, 0 0 80px rgba(255,107,26,0.5);
+  }
+
+  /* Halo respirant prophétique */
+  body.prophetic .progression-stage::before {
+    background: radial-gradient(circle, rgba(255, 107, 26, 0.12) 0%, transparent 60%);
+    animation: halo-prophetic 4s ease-in-out infinite;
+  }
+
+  @keyframes halo-prophetic {
+    0%,100% { opacity: 0.4; transform: translate(-50%,-50%) scale(0.95); }
+    33% { opacity: 0.9; transform: translate(-50%,-50%) scale(1.15); }
+    66% { opacity: 0.6; transform: translate(-50%,-50%) scale(1.05); }
+  }
+
+  /* Curseur prompteur */
+  body.prophetic .scroll-cursor {
+    background: linear-gradient(180deg, transparent, #ff6b1a 30%, #ffb84d 50%, #ff6b1a 70%, transparent);
+    box-shadow: 0 0 32px #ff6b1a, 0 0 64px rgba(255, 107, 26, 0.5);
+  }
+
+  body.prophetic .scroll-cursor::before,
+  body.prophetic .scroll-cursor::after {
+    background: #ff6b1a;
+    box-shadow: 0 0 24px #ff6b1a;
+  }
+
+  body.prophetic .scroll-chord.current {
+    color: #ffb84d;
+    text-shadow: 0 0 50px #ff6b1a, 0 0 100px rgba(255, 107, 26, 0.5);
+  }
+
+  /* Verset alternatif */
+  body.prophetic .verse-prophetic { display: block; }
+  body.prophetic .verse-default { display: none; }
+  .verse-prophetic { display: none; }
+  .verse-soaking { display: none; }
+  body.soaking .verse-soaking { display: block; }
+  body.soaking .verse-default { display: none; }
+  .verse-strings { display: none; }
+  body.strings .verse-strings { display: block; }
+  body.strings .verse-default { display: none; }
+
+  /* ─── MODE STRINGS ATMOSPHÉRIQUE ─── */
+  body.strings {
+    --gold: #b89bd8;
+    --gold-bright: #e0c8f0;
+    --gold-deep: #6b4a8a;
+  }
+
+  body.strings .stained-glass {
+    filter: hue-rotate(60deg) saturate(0.8) brightness(0.9);
+  }
+
+  body.strings .light-ray {
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(184, 155, 216, 0.12) 30%,
+      rgba(224, 200, 240, 0.18) 50%,
+      rgba(184, 155, 216, 0.12) 70%,
+      transparent 100%);
+    animation: ray-drift-strings 25s ease-in-out infinite;
+    filter: blur(35px);
+  }
+
+  @keyframes ray-drift-strings {
+    0%, 100% { transform: rotate(8deg) translateX(0); opacity: 0.5; }
+    33% { transform: rotate(10deg) translateX(40px); opacity: 0.8; }
+    66% { transform: rotate(6deg) translateX(-30px); opacity: 0.7; }
+  }
+
+  /* Ondes lumineuses (vagues sonores) qui traversent l'écran */
+  .sound-wave {
+    position: absolute;
+    width: 100vw;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(224, 200, 240, 0.4), transparent);
+    box-shadow: 0 0 12px rgba(184, 155, 216, 0.3);
+    pointer-events: none;
+    animation: wave-travel linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes wave-travel {
+    0% { transform: translateY(110vh) scaleX(0.5); opacity: 0; }
+    10% { opacity: 0.7; }
+    50% { transform: translateY(50vh) scaleX(1.2); opacity: 1; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-10vh) scaleX(0.8); opacity: 0; }
+  }
+
+  body.strings::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(184, 155, 216, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 70%, rgba(107, 138, 168, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+    animation: nebula-drift 30s ease-in-out infinite;
+  }
+
+  @keyframes nebula-drift {
+    0%, 100% { opacity: 0.6; transform: scale(1) translateX(0); }
+    50% { opacity: 1; transform: scale(1.05) translateX(-20px); }
+  }
+
+  body.strings h1 {
+    background: linear-gradient(180deg, #f0e0ff 0%, #b89bd8 50%, #6b4a8a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 0 80px rgba(184, 155, 216, 0.5);
+    animation: strings-shimmer 10s ease-in-out infinite;
+  }
+
+  @keyframes strings-shimmer {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.15) saturate(1.2); }
+  }
+
+  body.strings .crest svg {
+    animation: crest-strings 8s ease-in-out infinite;
+  }
+
+  @keyframes crest-strings {
+    0%, 100% { filter: drop-shadow(0 0 16px rgba(184, 155, 216, 0.6)); transform: scale(1) rotate(0deg); }
+    50% { filter: drop-shadow(0 0 40px rgba(224, 200, 240, 1)); transform: scale(1.04) rotate(-1deg); }
+  }
+
+  body.strings .top-mark::before { content: '⟡ '; opacity: 0.7; }
+  body.strings .top-mark::after { content: ' ⟡'; opacity: 0.7; }
+  body.strings .top-mark { color: #b89bd8; }
+
+  body.strings .chord-card { border-color: rgba(184, 155, 216, 0.4); }
+
+  body.strings .chord-card.active {
+    background: linear-gradient(180deg, rgba(184, 155, 216, 0.2), rgba(107, 74, 138, 0.1));
+    border-color: #e0c8f0;
+    animation: strings-card-swell 8s ease-in-out infinite;
+  }
+
+  @keyframes strings-card-swell {
+    0%, 100% {
+      transform: translateY(-12px) scale(1.05);
+      box-shadow: 0 20px 80px rgba(0,0,0,0.5), 0 0 100px rgba(184,155,216,0.4), inset 0 0 50px rgba(224,200,240,0.1);
+    }
+    50% {
+      transform: translateY(-18px) scale(1.08);
+      box-shadow: 0 30px 100px rgba(0,0,0,0.6), 0 0 180px rgba(224,200,240,0.7), inset 0 0 80px rgba(224,200,240,0.2);
+    }
+  }
+
+  body.strings .chord-card.active .chord-name {
+    color: #f0e0ff;
+    text-shadow: 0 0 50px #b89bd8, 0 0 100px rgba(224, 200, 240, 0.6);
+  }
+
+  body.strings .progression-stage::before {
+    background: radial-gradient(circle, rgba(184, 155, 216, 0.15) 0%, transparent 60%);
+    animation: halo-strings 10s ease-in-out infinite;
+  }
+
+  @keyframes halo-strings {
+    0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%,-50%) scale(1.4); }
+  }
+
+  body.strings .scroll-cursor {
+    background: linear-gradient(180deg, transparent, #b89bd8 30%, #f0e0ff 50%, #b89bd8 70%, transparent);
+    box-shadow: 0 0 32px #b89bd8, 0 0 80px rgba(224, 200, 240, 0.5);
+  }
+  body.strings .scroll-cursor::before,
+  body.strings .scroll-cursor::after {
+    background: #e0c8f0;
+    box-shadow: 0 0 24px #e0c8f0;
+  }
+  body.strings .scroll-chord.current {
+    color: #f0e0ff;
+    text-shadow: 0 0 60px #b89bd8, 0 0 120px rgba(224, 200, 240, 0.6);
+  }
+
+  /* ─── MODE HARPE DE DAVID ─── */
+  .verse-harp { display: none; }
+  body.harp .verse-harp { display: block; }
+  body.harp .verse-default { display: none; }
+
+  body.harp {
+    --gold: #c9a155;
+    --gold-bright: #f0c75e;
+    --gold-deep: #7a5a1f;
+    --paper: #f5e6c8;
+  }
+
+  body.harp .stained-glass {
+    filter: hue-rotate(-15deg) saturate(0.9) sepia(0.2);
+  }
+
+  body.harp .light-ray {
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(240, 199, 94, 0.15) 30%,
+      rgba(201, 161, 85, 0.22) 50%,
+      rgba(240, 199, 94, 0.15) 70%,
+      transparent 100%);
+    animation: ray-drift-harp 18s ease-in-out infinite;
+    filter: blur(28px);
+  }
+
+  @keyframes ray-drift-harp {
+    0%, 100% { transform: rotate(8deg) translateX(0); opacity: 0.55; }
+    50% { transform: rotate(7deg) translateX(50px); opacity: 0.85; }
+  }
+
+  /* Motifs hébraïques flottants */
+  .hebrew-mark {
+    position: absolute;
+    color: rgba(240, 199, 94, 0.25);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem;
+    pointer-events: none;
+    animation: hebrew-float linear infinite;
+    text-shadow: 0 0 20px rgba(240, 199, 94, 0.4);
+  }
+
+  @keyframes hebrew-float {
+    0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.4; }
+    100% { transform: translateY(-10vh) rotate(15deg); opacity: 0; }
+  }
+
+  /* Cordes vibrantes décoratives */
+  .harp-string {
+    position: fixed;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(240, 199, 94, 0.15) 20%,
+      rgba(240, 199, 94, 0.4) 50%,
+      rgba(240, 199, 94, 0.15) 80%,
+      transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+    animation: string-vibrate 4s ease-in-out infinite;
+  }
+
+  @keyframes string-vibrate {
+    0%, 100% { transform: scaleX(1); opacity: 0.5; }
+    50% { transform: scaleX(1.5); opacity: 0.9; box-shadow: 0 0 12px rgba(240, 199, 94, 0.6); }
+  }
+
+  body.harp::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(240, 199, 94, 0.1) 0%, transparent 60%),
+      radial-gradient(ellipse at center bottom, rgba(122, 90, 31, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 1;
+    animation: parchment-glow 12s ease-in-out infinite;
+  }
+
+  @keyframes parchment-glow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  body.harp h1 {
+    background: linear-gradient(180deg, #fbe4a2 0%, #f0c75e 40%, #c9a155 70%, #7a5a1f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 0 60px rgba(240, 199, 94, 0.4);
+    animation: harp-glow 6s ease-in-out infinite;
+    font-style: italic;
+  }
+
+  @keyframes harp-glow {
+    0%, 100% { filter: brightness(1) drop-shadow(0 0 20px rgba(240, 199, 94, 0.3)); }
+    50% { filter: brightness(1.15) drop-shadow(0 0 40px rgba(240, 199, 94, 0.6)); }
+  }
+
+  body.harp .crest svg {
+    animation: crest-harp 5s ease-in-out infinite;
+  }
+
+  @keyframes crest-harp {
+    0%, 100% { filter: drop-shadow(0 0 14px rgba(240, 199, 94, 0.6)); transform: scale(1) rotate(0deg); }
+    33% { filter: drop-shadow(0 0 30px rgba(240, 199, 94, 0.9)); transform: scale(1.03) rotate(2deg); }
+    66% { filter: drop-shadow(0 0 24px rgba(240, 199, 94, 0.8)); transform: scale(1.02) rotate(-1deg); }
+  }
+
+  body.harp .top-mark::before { content: '𓋹 '; opacity: 0.7; }
+  body.harp .top-mark::after { content: ' 𓋹'; opacity: 0.7; }
+  body.harp .top-mark { color: #f0c75e; }
+
+  body.harp .panel {
+    background: rgba(45, 32, 18, 0.6);
+    border-color: rgba(201, 161, 85, 0.4);
+  }
+
+  body.harp .chord-card {
+    border-color: rgba(201, 161, 85, 0.4);
+  }
+
+  body.harp .chord-card.active {
+    background: linear-gradient(180deg, rgba(240, 199, 94, 0.2), rgba(122, 90, 31, 0.1));
+    border-color: #f0c75e;
+    box-shadow:
+      0 20px 70px rgba(0, 0, 0, 0.6),
+      0 0 100px rgba(240, 199, 94, 0.4),
+      inset 0 0 50px rgba(240, 199, 94, 0.12);
+    animation: harp-card-resonate 1.5s ease-out;
+  }
+
+  @keyframes harp-card-resonate {
+    0% { transform: translateY(-12px) scale(1.02); }
+    20% { transform: translateY(-14px) scale(1.08); box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 140px rgba(240,199,94,0.6); }
+    100% { transform: translateY(-12px) scale(1.05); }
+  }
+
+  body.harp .chord-card.active .chord-name {
+    color: #fbe4a2;
+    text-shadow: 0 0 40px #f0c75e, 0 0 80px rgba(240, 199, 94, 0.6);
+    font-style: italic;
+  }
+
+  body.harp .progression-stage::before {
+    background: radial-gradient(circle, rgba(240, 199, 94, 0.12) 0%, transparent 60%);
+    animation: halo-harp 5s ease-in-out infinite;
+  }
+
+  @keyframes halo-harp {
+    0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 0.95; transform: translate(-50%,-50%) scale(1.2); }
+  }
+
+  body.harp .scroll-cursor {
+    background: linear-gradient(180deg, transparent, #f0c75e 30%, #fbe4a2 50%, #f0c75e 70%, transparent);
+    box-shadow: 0 0 32px #f0c75e, 0 0 80px rgba(240, 199, 94, 0.5);
+  }
+  body.harp .scroll-cursor::before,
+  body.harp .scroll-cursor::after {
+    background: #f0c75e;
+    box-shadow: 0 0 24px #f0c75e;
+  }
+  body.harp .scroll-chord.current {
+    color: #fbe4a2;
+    text-shadow: 0 0 50px #f0c75e, 0 0 100px rgba(240, 199, 94, 0.6);
+    font-style: italic;
+  }
+
+  /* ─── MODE SOAKING ─── */
+  body.soaking {
+    --gold: #6b8aa8;
+    --gold-bright: #9fb8d8;
+    --gold-deep: #2a3d5a;
+  }
+
+  body.soaking .stained-glass {
+    filter: hue-rotate(180deg) saturate(0.7) brightness(0.85);
+  }
+
+  body.soaking .light-ray {
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(159, 184, 216, 0.1) 30%,
+      rgba(107, 138, 168, 0.2) 50%,
+      rgba(159, 184, 216, 0.1) 70%,
+      transparent 100%);
+    animation: ray-drift-soaking 35s ease-in-out infinite;
+    filter: blur(40px);
+  }
+
+  @keyframes ray-drift-soaking {
+    0%, 100% { transform: rotate(8deg) translateX(0); opacity: 0.4; }
+    50% { transform: rotate(6deg) translateX(60px); opacity: 0.7; }
+  }
+
+  /* Étoiles flottantes pour soaking */
+  .star {
+    position: absolute;
+    background: #e8edf5;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #9fb8d8, 0 0 12px rgba(159, 184, 216, 0.5);
+    pointer-events: none;
+    animation: star-twinkle ease-in-out infinite;
+  }
+
+  @keyframes star-twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+  }
+
+  body.soaking::after {
+    content: '';
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60vh;
+    background: radial-gradient(ellipse at center bottom,
+      rgba(74, 100, 140, 0.2) 0%,
+      rgba(42, 61, 90, 0.1) 40%,
+      transparent 80%);
+    pointer-events: none;
+    z-index: 1;
+    animation: tide-shift 20s ease-in-out infinite;
+  }
+
+  @keyframes tide-shift {
+    0%, 100% { opacity: 0.5; transform: translateY(10px); }
+    50% { opacity: 0.9; transform: translateY(-15px); }
+  }
+
+  body.soaking h1 {
+    background: linear-gradient(180deg, #d6e0f0 0%, #9fb8d8 50%, #4a648c 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 0 80px rgba(159, 184, 216, 0.5);
+    animation: soaking-breathe 8s ease-in-out infinite;
+  }
+
+  @keyframes soaking-breathe {
+    0%, 100% { opacity: 0.95; letter-spacing: 0.08em; }
+    50% { opacity: 1; letter-spacing: 0.12em; }
+  }
+
+  body.soaking .top-mark::before { content: '☾ '; opacity: 0.7; }
+  body.soaking .top-mark::after { content: ' ☾'; opacity: 0.7; }
+  body.soaking .top-mark { color: #9fb8d8; }
+
+  body.soaking .crest svg {
+    animation: crest-soaking 10s ease-in-out infinite;
+  }
+
+  @keyframes crest-soaking {
+    0%, 100% { filter: drop-shadow(0 0 16px rgba(159, 184, 216, 0.5)); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 40px rgba(159, 184, 216, 0.9)); transform: scale(1.03); }
+  }
+
+  body.soaking .chord-card {
+    border-color: rgba(107, 138, 168, 0.4);
+  }
+
+  body.soaking .chord-card.active {
+    background: linear-gradient(180deg, rgba(159, 184, 216, 0.15), rgba(74, 100, 140, 0.08));
+    border-color: #9fb8d8;
+    box-shadow:
+      0 20px 80px rgba(0, 0, 0, 0.5),
+      0 0 120px rgba(159, 184, 216, 0.4),
+      inset 0 0 50px rgba(159, 184, 216, 0.1);
+    animation: soaking-card-breathe 6s ease-in-out infinite;
+  }
+
+  @keyframes soaking-card-breathe {
+    0%, 100% { transform: translateY(-12px) scale(1.05); }
+    50% { transform: translateY(-16px) scale(1.07); }
+  }
+
+  body.soaking .chord-card.active .chord-name {
+    color: #d6e0f0;
+    text-shadow: 0 0 40px #9fb8d8, 0 0 80px rgba(159, 184, 216, 0.6);
+  }
+
+  body.soaking .progression-stage::before {
+    background: radial-gradient(circle, rgba(159, 184, 216, 0.1) 0%, transparent 60%);
+    animation: halo-soaking 12s ease-in-out infinite;
+  }
+
+  @keyframes halo-soaking {
+    0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 0.9; transform: translate(-50%,-50%) scale(1.3); }
+  }
+
+  body.soaking .scroll-cursor {
+    background: linear-gradient(180deg, transparent, #9fb8d8 30%, #d6e0f0 50%, #9fb8d8 70%, transparent);
+    box-shadow: 0 0 32px #9fb8d8, 0 0 80px rgba(159, 184, 216, 0.5);
+  }
+  body.soaking .scroll-cursor::before,
+  body.soaking .scroll-cursor::after {
+    background: #9fb8d8;
+    box-shadow: 0 0 24px #9fb8d8;
+  }
+  body.soaking .scroll-chord.current {
+    color: #d6e0f0;
+    text-shadow: 0 0 60px #9fb8d8, 0 0 120px rgba(159, 184, 216, 0.5);
+  }
+
+  /* Indicateur de durée variable */
+  .duration-indicator {
+    text-align: center;
+    margin-top: 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--gold);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  body.soaking .duration-indicator { opacity: 0.7; }
+
+  /* ─── MODE VEILLÉE (plein écran immersif) ─── */
+  .vigil-toggle {
+    position: fixed;
+    top: 1.5rem; right: 1.5rem;
+    z-index: 100;
+    background: rgba(15, 10, 6, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(184, 134, 11, 0.4);
+    color: var(--gold);
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  .vigil-toggle:hover {
+    background: rgba(15, 10, 6, 0.9);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    transform: scale(1.1);
+  }
+
+  body.vigil header,
+  body.vigil .panel,
+  body.vigil .transport,
+  body.vigil .count-display,
+  body.vigil .beat-pulse,
+  body.vigil footer {
+    display: none !important;
+  }
+
+  body.vigil .container {
+    padding: 0;
+    max-width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4rem;
+  }
+
+  body.vigil .progression-stage {
+    background: transparent;
+    border: none;
+    padding: 6rem 2rem 2rem;
+  }
+
+  body.vigil .progression-stage::before {
+    width: 1000px; height: 1000px;
+    opacity: 0.6 !important;
+  }
+
+  body.vigil .scroll-stage {
+    border: none;
+    height: 280px;
+    background: transparent;
+  }
+
+  body.vigil .scroll-chord {
+    font-size: 6rem;
+  }
+  body.vigil .scroll-chord.current {
+    transform: scale(1.5);
+  }
+
+  body.vigil .chord-card {
+    min-width: 160px;
+    max-width: 220px;
+  }
+  body.vigil .chord-card .chord-name {
+    font-size: 3.5rem;
+  }
+
+  body.vigil .stained-glass { opacity: 0.7; }
+
+  /* Bouton sortie veillée plus discret */
+  body.vigil .vigil-toggle {
+    opacity: 0.3;
+  }
+  body.vigil .vigil-toggle:hover {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="stained-glass">
+  <svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="g1" cx="50%" cy="50%"><stop offset="0%" stop-color="#f4c430" stop-opacity="0.4"/><stop offset="100%" stop-color="#f4c430" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g2" cx="50%" cy="50%"><stop offset="0%" stop-color="#8b1a1a" stop-opacity="0.35"/><stop offset="100%" stop-color="#8b1a1a" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g3" cx="50%" cy="50%"><stop offset="0%" stop-color="#1e3a5f" stop-opacity="0.4"/><stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g4" cx="50%" cy="50%"><stop offset="0%" stop-color="#4a1d3a" stop-opacity="0.35"/><stop offset="100%" stop-color="#4a1d3a" stop-opacity="0"/></radialGradient>
+      <radialGradient id="g5" cx="50%" cy="50%"><stop offset="0%" stop-color="#5a6b3f" stop-opacity="0.3"/><stop offset="100%" stop-color="#5a6b3f" stop-opacity="0"/></radialGradient>
+    </defs>
+    <ellipse class="glass-pane" cx="200" cy="180" rx="280" ry="320" fill="url(#g3)"/>
+    <ellipse class="glass-pane" cx="600" cy="280" rx="240" ry="280" fill="url(#g1)"/>
+    <ellipse class="glass-pane" cx="1100" cy="200" rx="300" ry="340" fill="url(#g2)"/>
+    <ellipse class="glass-pane" cx="1600" cy="320" rx="280" ry="320" fill="url(#g4)"/>
+    <ellipse class="glass-pane" cx="350" cy="700" rx="320" ry="280" fill="url(#g5)"/>
+    <ellipse class="glass-pane" cx="900" cy="800" rx="280" ry="260" fill="url(#g1)"/>
+    <ellipse class="glass-pane" cx="1450" cy="780" rx="300" ry="280" fill="url(#g3)"/>
+    <ellipse class="glass-pane" cx="1750" cy="600" rx="220" ry="240" fill="url(#g2)"/>
+  </svg>
+</div>
+
+<div class="light-ray"></div>
+<div class="light-ray"></div>
+<div class="light-ray"></div>
+<div class="particles" id="particles"></div>
+
+<button class="vigil-toggle" id="vigil-toggle" title="Mode veillée">☾</button>
+
+<div class="container">
+
+  <header>
+    <div class="crest">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="36" fill="none" stroke="#b8860b" stroke-width="1" opacity="0.6"/>
+        <circle cx="40" cy="40" r="28" fill="none" stroke="#f4c430" stroke-width="1.5"/>
+        <path d="M40 12 L44 36 L68 40 L44 44 L40 68 L36 44 L12 40 L36 36 Z" fill="#f4c430"/>
+        <circle cx="40" cy="40" r="4" fill="#0f0a06"/>
+        <circle cx="40" cy="40" r="2" fill="#f4c430"/>
+      </svg>
+    </div>
+    <div class="top-mark">Atelier · Anno Domini · MMXXVI</div>
+    <h1>SANCTUS</h1>
+    <div class="ornament-line"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+    <div class="subtitle">Rythmes &amp; accords pour la louange et l'adoration</div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-label">Paramètres de la louange</div>
+    <div class="controls">
+      <div class="control-group"><label>Tonalité</label>
+        <select id="key">
+          <option value="C">Do (C)</option><option value="G">Sol (G)</option>
+          <option value="D" selected>Ré (D)</option><option value="A">La (A)</option>
+          <option value="E">Mi (E)</option><option value="B">Si (B)</option>
+          <option value="F">Fa (F)</option><option value="Bb">Si♭ (B♭)</option>
+          <option value="Eb">Mi♭ (E♭)</option><option value="Ab">La♭ (A♭)</option>
+        </select>
+      </div>
+      <div class="control-group"><label>Mode</label>
+        <select id="mode"><option value="major" selected>Majeur</option><option value="minor">Mineur</option></select>
+      </div>
+      <div class="control-group"><label>Style</label>
+        <select id="style">
+          <option value="hillsong">Pop louange</option>
+          <option value="contemplative" selected>Contemplatif</option>
+          <option value="gospel">Gospel</option>
+          <option value="anthem">Anthem</option>
+          <option value="ballad">Ballade</option>
+          <option value="prophetic">✦ Prophétique</option>
+          <option value="soaking">☾ Soaking</option>
+          <option value="strings">⟡ Strings atmosphérique</option>
+          <option value="harp">𓋹 Harpe de David</option>
+        </select>
+      </div>
+      <div class="control-group"><label>Progression</label><select id="progression"></select></div>
+      <div class="control-group"><label>Tempo (BPM)</label><input type="number" id="tempo" value="72" min="40" max="160"></div>
+      <div class="control-group"><label>Mesures / accord</label>
+        <select id="barsPerChord">
+          <option value="1">1 mesure</option><option value="2" selected>2 mesures</option><option value="4">4 mesures</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="progression-stage">
+    <div class="key-display">
+      <span id="key-name">Ré majeur</span>
+      <span class="sep">✦</span>
+      <strong id="prog-name">vi – IV – I – V</strong>
+    </div>
+    <div class="chord-row" id="chord-row"></div>
+    <div class="duration-indicator" id="duration-indicator">Demeure dans cet accord…</div>
+  </section>
+
+  <div class="transport">
+    <button class="btn" id="regenerate">↻ Nouvelle progression</button>
+    <button class="btn-primary btn" id="play">▶ Démarrer</button>
+    <button class="btn" id="randomize-rhythm">↻ Nouveau rythme</button>
+    <button class="btn" id="led-clear">⏻ Éteindre LEDs</button>
+  </div>
+
+  <div class="count-display">
+    Mesure <span class="beat-num" id="bar-num">—</span> · Temps <span class="beat-num" id="beat-num">—</span>
+  </div>
+  <div class="beat-pulse">
+    <div class="beat-dot downbeat" data-beat="1"></div>
+    <div class="beat-dot" data-beat="2"></div>
+    <div class="beat-dot" data-beat="3"></div>
+    <div class="beat-dot" data-beat="4"></div>
+  </div>
+
+  <section class="scroll-stage">
+    <div class="scroll-cursor"></div>
+    <div class="scroll-track" id="scroll-track"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-label">LEDs JamLed — sortie MIDI &amp; mode guide</div>
+    <div class="controls">
+      <div class="control-group"><label>Mode</label>
+        <select id="led-mode">
+          <option value="midi" selected>MIDI direct (basse latence)</option>
+          <option value="http">HTTP guide (clignotement)</option>
+        </select>
+      </div>
+      <div class="control-group"><label>Octave</label>
+        <select id="led-octave">
+          <option value="3">Octave 3 (grave)</option>
+          <option value="4" selected>Octave 4 (médium)</option>
+          <option value="5">Octave 5 (aigu)</option>
+        </select>
+      </div>
+      <div class="control-group"><label>Activation</label>
+        <button class="btn" id="led-toggle" style="height: 100%;">⏻ LEDs désactivées</button>
+      </div>
+      <div class="control-group" id="http-url-group"><label>URL JamLed (HTTP)</label>
+        <input type="text" id="jamled-url" value="http://jamled.local:5000">
+      </div>
+    </div>
+
+    <div id="midi-ports-section" style="margin-top: 1.5rem;">
+      <div style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); opacity: 0.85; margin-bottom: 0.75rem;">
+        Ports MIDI disponibles
+      </div>
+      <div id="midi-ports-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px;">
+        <span style="color: var(--soft); font-style: italic; font-family: 'Cormorant Garamond', serif;">Détection en cours…</span>
+      </div>
+    </div>
+
+    <div id="led-status">
+      <span class="indicator" id="led-indicator"></span>
+      <span id="led-status-text">En attente</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-label">Boîte à rythmes — clic pour activer</div>
+    <div class="rhythm-grid" id="rhythm-grid"></div>
+  </section>
+
+  <footer>
+    <div class="verse verse-default">« Je chanterai à l'Éternel tant que je vivrai »</div>
+    <div class="verse-ref verse-default">Psaume CIV · 33</div>
+    <div class="verse verse-prophetic">« L'Esprit du Seigneur, l'Éternel, est sur moi »</div>
+    <div class="verse-ref verse-prophetic">Ésaïe LXI · 1</div>
+    <div class="verse verse-soaking">« Demeurez en moi, et je demeurerai en vous »</div>
+    <div class="verse-ref verse-soaking">Jean XV · 4</div>
+    <div class="verse verse-strings">« Que toute âme qui respire loue l'Éternel »</div>
+    <div class="verse-ref verse-strings">Psaume CL · 6</div>
+    <div class="verse verse-harp">« Toutes les fois que le mauvais esprit était sur Saül, David prenait la harpe et en jouait »</div>
+    <div class="verse-ref verse-harp">I Samuel XVI · 23</div>
+  </footer>
+
+</div>
+
+<script>
+function spawnParticles(){
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (15 + Math.random() * 25) + 's';
+    p.style.animationDelay = -Math.random() * 30 + 's';
+    p.style.opacity = 0.3 + Math.random() * 0.5;
+    container.appendChild(p);
+  }
+}
+spawnParticles();
+
+function toggleEmbers(enable){
+  const container = document.getElementById('particles');
+  // Retirer braises existantes
+  container.querySelectorAll('.ember').forEach(e => e.remove());
+  if (!enable) return;
+  for (let i = 0; i < 25; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = Math.random() * 100 + '%';
+    e.style.animationDuration = (8 + Math.random() * 10) + 's';
+    e.style.animationDelay = -Math.random() * 18 + 's';
+    container.appendChild(e);
+  }
+}
+
+function toggleStars(enable){
+  const container = document.getElementById('particles');
+  container.querySelectorAll('.star').forEach(s => s.remove());
+  if (!enable) return;
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = 1 + Math.random() * 3;
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.animationDuration = (3 + Math.random() * 6) + 's';
+    s.style.animationDelay = -Math.random() * 8 + 's';
+    container.appendChild(s);
+  }
+}
+
+function toggleWaves(enable){
+  const container = document.getElementById('particles');
+  container.querySelectorAll('.sound-wave').forEach(w => w.remove());
+  if (!enable) return;
+  for (let i = 0; i < 8; i++) {
+    const w = document.createElement('div');
+    w.className = 'sound-wave';
+    w.style.animationDuration = (12 + Math.random() * 18) + 's';
+    w.style.animationDelay = -Math.random() * 25 + 's';
+    container.appendChild(w);
+  }
+}
+
+function toggleHarpStrings(enable){
+  const container = document.getElementById('particles');
+  container.querySelectorAll('.harp-string, .hebrew-mark').forEach(e => e.remove());
+  if (!enable) return;
+
+  // 7 cordes verticales lumineuses (les 7 cordes traditionnelles de la kinnor)
+  const positions = [12, 22, 33, 45, 57, 69, 82];
+  positions.forEach((pos, i) => {
+    const s = document.createElement('div');
+    s.className = 'harp-string';
+    s.style.left = pos + '%';
+    s.style.animationDelay = (-i * 0.6) + 's';
+    s.style.animationDuration = (3 + Math.random() * 3) + 's';
+    container.appendChild(s);
+  });
+
+  // Lettres hébraïques flottantes : א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע
+  const letters = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','שׁ','ת'];
+  for (let i = 0; i < 16; i++) {
+    const m = document.createElement('div');
+    m.className = 'hebrew-mark';
+    m.textContent = letters[Math.floor(Math.random() * letters.length)];
+    m.style.left = Math.random() * 100 + '%';
+    m.style.fontSize = (1.5 + Math.random() * 2.5) + 'rem';
+    m.style.animationDuration = (20 + Math.random() * 25) + 's';
+    m.style.animationDelay = -Math.random() * 40 + 's';
+    container.appendChild(m);
+  }
+}
+
+// Mode veillée
+document.getElementById('vigil-toggle').addEventListener('click', () => {
+  document.body.classList.toggle('vigil');
+  const btn = document.getElementById('vigil-toggle');
+  btn.textContent = document.body.classList.contains('vigil') ? '✕' : '☾';
+  btn.title = document.body.classList.contains('vigil') ? 'Quitter veillée' : 'Mode veillée';
+});
+
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_NAMES_FR = {'C':'Do','C#':'Do♯','Db':'Ré♭','D':'Ré','D#':'Ré♯','Eb':'Mi♭','E':'Mi','F':'Fa','F#':'Fa♯','Gb':'Sol♭','G':'Sol','G#':'Sol♯','Ab':'La♭','A':'La','A#':'La♯','Bb':'Si♭','B':'Si'};
+const ENHARMONIC = {'Db':'C#','Eb':'D#','Gb':'F#','Ab':'G#','Bb':'A#'};
+const MAJOR_SCALE = [0,2,4,5,7,9,11];
+const MINOR_SCALE = [0,2,3,5,7,8,10];
+const MAJOR_QUALITIES = ['','m','m','','','m','dim'];
+const MINOR_QUALITIES = ['m','dim','','m','m','',''];
+const MAJOR_ROMAN = ['I','ii','iii','IV','V','vi','vii°'];
+const MINOR_ROMAN = ['i','ii°','III','iv','v','VI','VII'];
+
+function normalizeKey(k){ return ENHARMONIC[k] || k; }
+function getScale(key, mode){
+  const root = NOTES.indexOf(normalizeKey(key));
+  const scale = mode === 'major' ? MAJOR_SCALE : MINOR_SCALE;
+  return scale.map(s => NOTES[(root + s) % 12]);
+}
+function getChord(key, mode, degree){
+  const scale = getScale(key, mode);
+  const root = scale[degree - 1];
+  const qualities = mode === 'major' ? MAJOR_QUALITIES : MINOR_QUALITIES;
+  const q = qualities[degree - 1];
+  const rootIdx = NOTES.indexOf(root);
+  let intervals;
+  if (q === '') intervals = [0,4,7];
+  else if (q === 'm') intervals = [0,3,7];
+  else if (q === 'dim') intervals = [0,3,6];
+  const notes = intervals.map(i => NOTES[(rootIdx + i) % 12]);
+  const roman = (mode === 'major' ? MAJOR_ROMAN : MINOR_ROMAN)[degree - 1];
+  return { root, quality: q, notes, roman, degree };
+}
+
+const PROGRESSIONS = {
+  major: {
+    'I-V-vi-IV': [1,5,6,4],'vi-IV-I-V': [6,4,1,5],'I-vi-IV-V': [1,6,4,5],
+    'I-IV-V-IV': [1,4,5,4],'I-V-IV-V': [1,5,4,5],'IV-I-V-vi': [4,1,5,6],
+    'I-iii-IV-V': [1,3,4,5],'I-IV-vi-V': [1,4,6,5],'vi-V-IV-V': [6,5,4,5],
+    'I-V-vi-iii-IV': [1,5,6,3,4],
+    'I-iii-vi-IV': [1,3,6,4],
+    'IV-V-iii-vi': [4,5,3,6],
+    'I-IV-I-V': [1,4,1,5]
+  },
+  minor: {
+    'i-VI-III-VII': [1,6,3,7],'i-iv-VII-III': [1,4,7,3],'i-VII-VI-VII': [1,7,6,7],
+    'i-iv-v-i': [1,4,5,1],'i-VI-VII-i': [1,6,7,1],'i-III-VII-VI': [1,3,7,6],
+    'i-VII-III-VI': [1,7,3,6],
+    'i-iv-i-VII': [1,4,1,7],
+    'i-VI-iv-VII': [1,6,4,7]
+  }
+};
+
+const STYLE_DEFAULTS = {
+  hillsong: { prog: 'I-V-vi-IV', tempo: 76, bars: 2, mode: null },
+  contemplative: { prog: 'vi-IV-I-V', tempo: 64, bars: 2, mode: null },
+  gospel: { prog: 'I-vi-IV-V', tempo: 84, bars: 1, mode: null },
+  anthem: { prog: 'I-V-vi-iii-IV', tempo: 92, bars: 2, mode: null },
+  ballad: { prog: 'IV-I-V-vi', tempo: 60, bars: 4, mode: null },
+  prophetic: { prog: 'i-VII-III-VI', tempo: 56, bars: 4, mode: 'minor' },
+  soaking: { prog: 'I-iii-IV-V', tempo: 52, bars: 4, mode: 'major' },
+  strings: { prog: 'vi-IV-I-V', tempo: 50, bars: 8, mode: 'major' },
+  harp: { prog: 'i-VI-III-VII', tempo: 60, bars: 2, mode: 'minor' }
+};
+
+const RHYTHM_PATTERNS = {
+  hillsong: { kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], hat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], shaker:[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1] },
+  contemplative: { kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], shaker:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0] },
+  gospel: { kick:[1,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0], snare:[0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1], hat:[1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], shaker:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] },
+  anthem: { kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1], hat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], shaker:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+  ballad: { kick:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0] },
+  prophetic: { kick:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0] },
+  soaking: { kick:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+  strings: { kick:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+  harp: { kick:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] }
+};
+
+const state = {
+  key: 'D', mode: 'major', style: 'contemplative',
+  progName: 'vi-IV-I-V', tempo: 72, barsPerChord: 2,
+  chords: [], rhythm: JSON.parse(JSON.stringify(RHYTHM_PATTERNS.contemplative)),
+  playing: false, currentChordIdx: 0, currentBar: 0, currentStep: 0
+};
+
+let piano, bassSynth, kick, snare, hat, shaker, loop;
+let droneSynth, droneNote;
+let padSynth, subBass, padNotes;
+let stringsHi, stringsMid, stringsLo, stringsSubBass, stringsNotes;
+let harpSynth, harpResonance, harpDrone;
+
+function initAudio(){
+  if (piano) return;
+  const reverb = new Tone.Reverb({ decay: 5, wet: 0.45 }).toDestination();
+  piano = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.04, decay: 0.4, sustain: 0.5, release: 2 }
+  });
+  piano.connect(reverb);
+  piano.volume.value = -10;
+  bassSynth = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.5 }
+  }).toDestination();
+  bassSynth.volume.value = -12;
+
+  // Drone prophétique
+  const droneReverb = new Tone.Reverb({ decay: 10, wet: 0.7 }).toDestination();
+  droneSynth = new Tone.PolySynth(Tone.AMSynth, {
+    harmonicity: 1.5,
+    oscillator: { type: 'sine' },
+    envelope: { attack: 3, decay: 1, sustain: 0.8, release: 6 },
+    modulation: { type: 'sawtooth' },
+    modulationEnvelope: { attack: 4, decay: 0.5, sustain: 0.5, release: 4 }
+  });
+  droneSynth.connect(droneReverb);
+  droneSynth.volume.value = -22;
+
+  // Pad soaking
+  const padReverb = new Tone.Reverb({ decay: 12, wet: 0.85 }).toDestination();
+  const padDelay = new Tone.FeedbackDelay({ delayTime: 0.5, feedback: 0.4, wet: 0.3 }).connect(padReverb);
+  padSynth = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 2,
+    modulationIndex: 3,
+    oscillator: { type: 'sine' },
+    envelope: { attack: 4, decay: 2, sustain: 0.9, release: 8 },
+    modulation: { type: 'triangle' },
+    modulationEnvelope: { attack: 5, decay: 1, sustain: 0.7, release: 6 }
+  });
+  padSynth.connect(padDelay);
+  padSynth.volume.value = -16;
+
+  subBass = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 2, decay: 0.5, sustain: 0.9, release: 4 }
+  }).toDestination();
+  subBass.volume.value = -14;
+
+  // ─── ENSEMBLE DE STRINGS PROPHÉTIQUE ───
+  // Reverb cathédrale géante
+  const stringsReverb = new Tone.Reverb({ decay: 14, wet: 0.7 }).toDestination();
+  // Chorus pour l'effet "ensemble" (plusieurs musiciens jouant en même temps)
+  const stringsChorus = new Tone.Chorus({
+    frequency: 0.4, delayTime: 5, depth: 0.7, feedback: 0.1, wet: 0.5
+  }).start().connect(stringsReverb);
+  // Filtre passe-bas qui s'ouvre lentement = "swell" caractéristique des strings
+  const stringsFilter = new Tone.Filter({ frequency: 2000, type: 'lowpass', Q: 1 }).connect(stringsChorus);
+  // LFO sur le filtre pour un mouvement organique
+  const stringsLFO = new Tone.LFO({ frequency: 0.15, min: 1200, max: 3200 }).start();
+  stringsLFO.connect(stringsFilter.frequency);
+
+  // Couche aigüe : violons brillants
+  stringsHi = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 3, decay: 1, sustain: 0.85, release: 5 }
+  });
+  stringsHi.connect(stringsFilter);
+  stringsHi.volume.value = -18;
+
+  // Couche médium : altos / violoncelles aigus
+  stringsMid = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 4, decay: 1, sustain: 0.9, release: 6 }
+  });
+  stringsMid.connect(stringsFilter);
+  stringsMid.volume.value = -16;
+
+  // Couche grave : violoncelles / contrebasses
+  stringsLo = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 5, decay: 1, sustain: 0.95, release: 8 }
+  });
+  stringsLo.connect(stringsReverb);
+  stringsLo.volume.value = -14;
+
+  // Sub-bass profond
+  stringsSubBass = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 3, decay: 0.5, sustain: 0.95, release: 5 }
+  }).toDestination();
+  stringsSubBass.volume.value = -10;
+
+  kick = new Tone.MembraneSynth({
+    pitchDecay: 0.05, octaves: 6,
+    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+  }).toDestination();
+  kick.volume.value = -6;
+  snare = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.13, sustain: 0 }
+  }).toDestination();
+  snare.volume.value = -14;
+  hat = new Tone.MetalSynth({
+    frequency: 250, envelope: { attack: 0.001, decay: 0.05, release: 0.05 },
+    harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5
+  }).toDestination();
+  hat.volume.value = -28;
+  shaker = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.005, decay: 0.05, sustain: 0 }
+  }).toDestination();
+  shaker.volume.value = -22;
+
+  // ─── HARPE DE DAVID ───
+  // Reverb hall ancien, naturelle
+  const harpReverb = new Tone.Reverb({ decay: 6, wet: 0.5 }).toDestination();
+  // Léger delay pour suggérer l'écho dans une salle
+  const harpDelay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.15, wet: 0.18 }).connect(harpReverb);
+
+  // Synth harpe principal : pluck-style avec attaque vive et longue queue
+  // L'envelope sustain bas + release long simule la corde qui s'éteint progressivement
+  harpSynth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.005, decay: 0.8, sustain: 0.15, release: 3 }
+  });
+  harpSynth.connect(harpDelay);
+  harpSynth.volume.value = -8;
+
+  // Résonance sympathique : couche d'harmoniques basses (les autres cordes qui vibrent)
+  harpResonance = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.05, decay: 1.5, sustain: 0.4, release: 4 }
+  });
+  harpResonance.connect(harpReverb);
+  harpResonance.volume.value = -16;
+
+  // Drone très doux de la fondamentale (la grosse corde grave qui vibre)
+  harpDrone = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 1, decay: 2, sustain: 0.6, release: 6 }
+  });
+  harpDrone.connect(harpReverb);
+  harpDrone.volume.value = -18;
+}
+
+function buildProgressionList(){
+  const sel = document.getElementById('progression');
+  sel.innerHTML = '';
+  const progs = PROGRESSIONS[state.mode];
+  Object.keys(progs).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name.replace(/-/g, ' – ');
+    sel.appendChild(opt);
+  });
+  sel.value = state.progName in progs ? state.progName : Object.keys(progs)[0];
+  state.progName = sel.value;
+}
+
+function generateChords(){
+  const degrees = PROGRESSIONS[state.mode][state.progName];
+  state.chords = degrees.map(d => getChord(state.key, state.mode, d));
+}
+
+function renderChords(){
+  const row = document.getElementById('chord-row');
+  row.innerHTML = '';
+  state.chords.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'chord-card';
+    const chordSymbol = c.root + c.quality;
+    const qualityLabel = c.quality === '' ? 'majeur' : c.quality === 'm' ? 'mineur' : 'diminué';
+    const notesFr = c.notes.map(n => NOTE_NAMES_FR[n] || n).join(' · ');
+    card.innerHTML = `
+      <div class="roman-tag">${c.roman}</div>
+      <div class="chord-name">${chordSymbol}</div>
+      <div class="chord-quality">${qualityLabel}</div>
+      <div class="chord-notes">${notesFr}</div>
+      <div class="num-tag">${String(i + 1).padStart(2, '0')}</div>
+    `;
+    card.addEventListener('click', () => playChordPreview(c));
+    row.appendChild(card);
+  });
+  const keyName = NOTE_NAMES_FR[state.key] || state.key;
+  const modeName = state.mode === 'major' ? 'majeur' : 'mineur';
+  document.getElementById('key-name').textContent = `${keyName} ${modeName}`;
+  document.getElementById('prog-name').textContent = state.progName.replace(/-/g, ' – ');
+}
+
+function renderScrollChords(){
+  const track = document.getElementById('scroll-track');
+  track.innerHTML = '';
+  for (let rep = 0; rep < 3; rep++) {
+    state.chords.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'scroll-chord';
+      el.dataset.idx = i; el.dataset.rep = rep;
+      el.innerHTML = `${c.root + c.quality}<small>${c.roman}</small>`;
+      track.appendChild(el);
+    });
+  }
+}
+
+function renderRhythm(){
+  const grid = document.getElementById('rhythm-grid');
+  grid.innerHTML = '';
+  const tracks = [
+    { id: 'kick', label: 'Grosse caisse' },
+    { id: 'snare', label: 'Caisse claire' },
+    { id: 'hat', label: 'Charleston' },
+    { id: 'shaker', label: 'Shaker' }
+  ];
+  tracks.forEach(t => {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rhythm-label';
+    labelEl.textContent = t.label;
+    grid.appendChild(labelEl);
+    const cellsEl = document.createElement('div');
+    cellsEl.className = 'rhythm-cells';
+    cellsEl.dataset.track = t.id;
+    for (let i = 0; i < 16; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + t.id;
+      cell.dataset.step = i;
+      if (state.rhythm[t.id][i]) cell.classList.add('on');
+      cell.addEventListener('click', () => {
+        state.rhythm[t.id][i] = state.rhythm[t.id][i] ? 0 : 1;
+        cell.classList.toggle('on');
+      });
+      cellsEl.appendChild(cell);
+    }
+    grid.appendChild(cellsEl);
+  });
+}
+
+function playChordPreview(chord){
+  initAudio();
+  Tone.start();
+  const notes = chord.notes.map(n => n + '4');
+  const bass = chord.notes[0] + '3';
+  piano.triggerAttackRelease([bass, ...notes], '2n');
+}
+
+function highlightChord(idx){
+  document.querySelectorAll('.chord-card').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  const els = document.querySelectorAll('.scroll-chord');
+  els.forEach(el => {
+    el.classList.remove('current', 'next', 'distant-1', 'distant-2');
+    const i = parseInt(el.dataset.idx);
+    const r = parseInt(el.dataset.rep);
+    if (r === 1) {
+      if (i === idx) el.classList.add('current');
+      else if (i === (idx + 1) % state.chords.length) el.classList.add('next');
+      else if (i === (idx + 2) % state.chords.length || i === (idx - 1 + state.chords.length) % state.chords.length) el.classList.add('distant-1');
+      else el.classList.add('distant-2');
+    }
+  });
+  scrollToCurrentChord(idx);
+  if (led.enabled) ledSendChord(idx);
+}
+
+function scrollToCurrentChord(idx){
+  const track = document.getElementById('scroll-track');
+  const els = track.querySelectorAll('.scroll-chord');
+  const target = Array.from(els).find(el =>
+    parseInt(el.dataset.idx) === idx && parseInt(el.dataset.rep) === 1
+  );
+  if (!target) return;
+  const stage = track.parentElement;
+  const stageW = stage.offsetWidth;
+  const targetCenter = target.offsetLeft + target.offsetWidth / 2;
+  const offset = stageW / 2 - targetCenter;
+  track.style.transform = `translateX(${offset}px)`;
+}
+
+async function startPlayback(){
+  initAudio();
+  await Tone.start();
+  Tone.Transport.bpm.value = state.tempo;
+  state.currentChordIdx = 0;
+  state.currentBar = 0;
+  state.currentStep = 0;
+  state.nextChordBar = 0;  // Quand changer d'accord (en mesures absolues)
+  if (loop) loop.dispose();
+
+  // Drone prophétique : la fondamentale et sa quinte tenues en continu
+  if (state.style === 'prophetic') {
+    const tonic = state.key + '2';
+    const fifthIdx = (NOTES.indexOf(normalizeKey(state.key)) + 7) % 12;
+    const fifth = NOTES[fifthIdx] + '3';
+    droneNote = [tonic, fifth];
+    droneSynth.triggerAttack(droneNote);
+  }
+
+  loop = new Tone.Loop((time) => {
+    const step = state.currentStep;
+    const bar = state.currentBar;
+    const stepsPerBar = 16;
+
+    // Décider du changement d'accord
+    const isSoaking = state.style === 'soaking';
+    let shouldChangeChord = false;
+
+    if (step === 0) {
+      if (isSoaking) {
+        // Durée variable : 4 à 12 mesures
+        if (bar >= state.nextChordBar) {
+          shouldChangeChord = true;
+          const variableBars = 4 + Math.floor(Math.random() * 9); // 4 à 12
+          state.nextChordBar = bar + variableBars;
+          // afficher la durée
+          Tone.Draw.schedule(() => {
+            const ind = document.getElementById('duration-indicator');
+            ind.textContent = `Demeure dans cet accord pendant ${variableBars} mesures…`;
+          }, time);
+        }
+      } else {
+        // Mode classique : durée fixe
+        if (bar % state.barsPerChord === 0) shouldChangeChord = true;
+      }
+    }
+
+    if (shouldChangeChord) {
+      let chordIdx;
+      if (isSoaking) {
+        // En soaking on avance dans la progression à chaque changement
+        chordIdx = (state.currentChordIdx + (bar === 0 ? 0 : 1)) % state.chords.length;
+      } else {
+        chordIdx = Math.floor(bar / state.barsPerChord) % state.chords.length;
+      }
+      state.currentChordIdx = chordIdx;
+      const chord = state.chords[chordIdx];
+      const bass = chord.notes[0] + '2';
+
+      if (isSoaking) {
+        // Voicing soaking : grand espacement, deux octaves
+        const padVoicing = [
+          chord.notes[0] + '3',
+          chord.notes[1] + '4',
+          chord.notes[2] + '4',
+          chord.notes[0] + '5'
+        ];
+        const variableBars = state.nextChordBar - bar;
+        const dur = variableBars + 'm';
+        padSynth.triggerAttackRelease(padVoicing, dur, time);
+        subBass.triggerAttackRelease(chord.notes[0] + '1', dur, time);
+        // Petit arpège piano doux toutes les 2 mesures sur soaking
+        piano.triggerAttackRelease([chord.notes[0] + '4'], '2n', time, 0.5);
+      } else if (state.style === 'strings') {
+        // Voicing orchestral : 4 couches superposées
+        const dur = state.barsPerChord + 'm';
+        const root = chord.notes[0];
+        const third = chord.notes[1];
+        const fifth = chord.notes[2];
+
+        // Sub-bass : fondamentale très grave
+        stringsSubBass.triggerAttackRelease(root + '1', dur, time);
+
+        // Couche grave : fondamentale + quinte au registre violoncelle
+        stringsLo.triggerAttackRelease([root + '2', fifth + '2'], dur, time);
+
+        // Couche médium : triade complète au registre alto
+        stringsMid.triggerAttackRelease([root + '3', third + '3', fifth + '3'], dur, time);
+
+        // Couche aigüe : triade en renversement (octave + tierce + quinte)
+        // typique des arrangements de strings prophétiques
+        stringsHi.triggerAttackRelease([root + '4', third + '4', fifth + '4', root + '5'], dur, time);
+
+        // Léger piano touch en background pour la définition harmonique
+        piano.triggerAttackRelease([third + '4'], '1n', time, 0.3);
+      } else if (state.style === 'harp') {
+        // ─── HARPE DE DAVID : arpège roulant ───
+        const root = chord.notes[0];
+        const third = chord.notes[1];
+        const fifth = chord.notes[2];
+
+        // Drone très doux de la fondamentale grave
+        harpDrone.triggerAttackRelease(root + '2', state.barsPerChord + 'm', time, 0.7);
+
+        // Pose les notes "longues" en résonance pour que les harmoniques sonnent
+        harpResonance.triggerAttackRelease([root + '3', fifth + '3'], state.barsPerChord + 'm', time);
+
+        // Construit le pattern d'arpège : montée puis descente, sur 2 octaves
+        // Pattern typique de harpe : I - III - V - VIII - V - III
+        const arpeggio = [
+          root + '3',
+          third + '3',
+          fifth + '3',
+          root + '4',
+          third + '4',
+          fifth + '4',
+          root + '5',
+          fifth + '4',
+          third + '4',
+          root + '4',
+          fifth + '3',
+          third + '3'
+        ];
+
+        // Étaler sur la durée de l'accord (12 notes en barsPerChord mesures)
+        const totalSteps = 16 * state.barsPerChord;
+        const stepDuration = (60 / state.tempo) / 4; // durée d'une croche en secondes
+        const noteSpacing = (totalSteps / arpeggio.length) * stepDuration;
+
+        arpeggio.forEach((note, i) => {
+          // Vélocité descendante pour adoucir, plus fort sur la 1ère et la note d'octave
+          let velocity = 0.6;
+          if (i === 0) velocity = 0.85;
+          else if (i === 6) velocity = 0.75; // l'octave aiguë
+          else if (i % 3 === 0) velocity = 0.7;
+          harpSynth.triggerAttackRelease(note, '4n', time + i * noteSpacing, velocity);
+        });
+      } else {
+        const voicing = [chord.notes[0] + '3', chord.notes[1] + '4', chord.notes[2] + '4'];
+        const dur = (isSoaking ? 4 : state.barsPerChord) + 'm';
+        piano.triggerAttackRelease(voicing, state.barsPerChord + 'm', time);
+        bassSynth.triggerAttackRelease(bass, state.barsPerChord + 'm', time);
+      }
+      Tone.Draw.schedule(() => highlightChord(chordIdx), time);
+    }
+
+    if (state.rhythm.kick[step])   kick.triggerAttackRelease('C2', '8n', time);
+    if (state.rhythm.snare[step])  snare.triggerAttackRelease('16n', time);
+    if (state.rhythm.hat[step])    hat.triggerAttackRelease('C5', '32n', time, 0.3);
+    if (state.rhythm.shaker[step]) shaker.triggerAttackRelease('32n', time, 0.4);
+
+    Tone.Draw.schedule(() => {
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('beat'));
+      document.querySelectorAll(`.cell[data-step="${step}"]`).forEach(c => c.classList.add('beat'));
+      const beatNum = Math.floor(step / 4) + 1;
+      document.getElementById('bar-num').textContent = (bar + 1);
+      document.getElementById('beat-num').textContent = beatNum;
+      document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+      if (step % 4 === 0) {
+        const dot = document.querySelector(`.beat-dot[data-beat="${beatNum}"]`);
+        if (dot) dot.classList.add('active');
+      }
+    }, time);
+
+    state.currentStep = (state.currentStep + 1) % stepsPerBar;
+    if (state.currentStep === 0) state.currentBar++;
+  }, '16n');
+
+  loop.start(0);
+  Tone.Transport.start();
+  state.playing = true;
+  const btn = document.getElementById('play');
+  btn.textContent = '■ Arrêter';
+  btn.classList.add('playing');
+}
+
+function stopPlayback(){
+  if (loop) { loop.stop(); loop.dispose(); loop = null; }
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  if (droneSynth && droneNote) {
+    droneSynth.triggerRelease(droneNote);
+    droneNote = null;
+  }
+  if (padSynth) padSynth.releaseAll();
+  if (stringsHi) stringsHi.releaseAll();
+  if (stringsMid) stringsMid.releaseAll();
+  if (stringsLo) stringsLo.releaseAll();
+  if (harpSynth) harpSynth.releaseAll();
+  if (harpResonance) harpResonance.releaseAll();
+  state.nextChordBar = 0;
+  state.playing = false;
+  const btn = document.getElementById('play');
+  btn.textContent = '▶ Démarrer';
+  btn.classList.remove('playing');
+  document.querySelectorAll('.cell.beat').forEach(c => c.classList.remove('beat'));
+  document.querySelectorAll('.chord-card.active').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.beat-dot.active').forEach(c => c.classList.remove('active'));
+  document.getElementById('bar-num').textContent = '—';
+  document.getElementById('beat-num').textContent = '—';
+  if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
+  if (led.enabled) ledClear();
+}
+
+function regenerate(){
+  generateChords();
+  renderChords();
+  renderScrollChords();
+  setTimeout(() => scrollToCurrentChord(0), 50);
+}
+
+function randomizeRhythm(){
+  const base = JSON.parse(JSON.stringify(RHYTHM_PATTERNS[state.style]));
+  ['kick','snare','hat','shaker'].forEach(t => {
+    for (let i = 0; i < 16; i++) {
+      if (Math.random() < 0.15) base[t][i] = base[t][i] ? 0 : 1;
+    }
+  });
+  state.rhythm = base;
+  renderRhythm();
+}
+
+/* ============================================================
+   LEDS JAMLED — Web MIDI + HTTP
+   ============================================================ */
+const led = {
+  url: 'http://jamled.local:5000',
+  enabled: false, octave: 4,
+  mode: 'midi',  // 'midi' ou 'http'
+  blinkInterval: null, blinkOn: false,
+  midiAccess: null,
+  midiOutputs: [],      // tous les ports détectés
+  enabledOutputs: new Set(),  // ids des ports cochés
+  lastSentNotes: []     // notes actuellement allumées (pour note off)
+};
+
+function noteToMidi(note, octave){
+  const n = ENHARMONIC[note] || note;
+  const idx = NOTES.indexOf(n);
+  if (idx < 0) return null;
+  return 12 * (octave + 1) + idx;
+}
+
+function chordToMidiNotes(chord, octave){
+  const rootIdx = NOTES.indexOf(chord.notes[0]);
+  const bass = noteToMidi(chord.notes[0], octave - 1);
+  const notes = chord.notes.map((n, i) => {
+    const ni = NOTES.indexOf(n);
+    const oct = (i > 0 && ni < rootIdx) ? octave + 1 : octave;
+    return noteToMidi(n, oct);
+  });
+  return [bass, ...notes].filter(n => n !== null);
+}
+
+/* ─── Web MIDI ─── */
+async function initMIDI(){
+  if (!navigator.requestMIDIAccess) {
+    setLedStatus('error', 'Web MIDI non supporté par ce navigateur');
+    document.getElementById('midi-ports-list').innerHTML =
+      '<span style="color: #c44; font-family: \'Cormorant Garamond\', serif;">Web MIDI non supporté — utilise Chrome ou Edge</span>';
+    return;
+  }
+  try {
+    led.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+    refreshMIDIPorts();
+    led.midiAccess.onstatechange = refreshMIDIPorts;
+  } catch(e) {
+    setLedStatus('error', 'Accès MIDI refusé');
+    document.getElementById('midi-ports-list').innerHTML =
+      '<span style="color: #c44; font-family: \'Cormorant Garamond\', serif;">Accès MIDI refusé</span>';
+  }
+}
+
+function refreshMIDIPorts(){
+  if (!led.midiAccess) return;
+  led.midiOutputs = [];
+  led.midiAccess.outputs.forEach(out => {
+    led.midiOutputs.push(out);
+  });
+  renderMIDIPortsList();
+}
+
+function renderMIDIPortsList(){
+  const list = document.getElementById('midi-ports-list');
+  if (led.midiOutputs.length === 0) {
+    list.innerHTML = '<span style="color: var(--soft); font-style: italic; font-family: \'Cormorant Garamond\', serif;">Aucun port MIDI détecté — branche ton piano ou démarre un port virtuel</span>';
+    return;
+  }
+  list.innerHTML = '';
+  led.midiOutputs.forEach(out => {
+    const label = document.createElement('label');
+    label.className = 'midi-port';
+    const isActive = led.enabledOutputs.has(out.id);
+    if (isActive) label.classList.add('active');
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = isActive;
+    cb.addEventListener('change', () => {
+      if (cb.checked) led.enabledOutputs.add(out.id);
+      else led.enabledOutputs.delete(out.id);
+      label.classList.toggle('active', cb.checked);
+      saveMIDISelection();
+    });
+
+    // Détecter le type de port
+    let portType = 'MIDI';
+    const name = out.name || '';
+    if (/yamaha|p-?s500|digital piano|cp/i.test(name)) portType = 'Piano';
+    else if (/jamled|virtual|f_midi/i.test(name)) portType = 'JamLed';
+    else if (/iac|bluetooth/i.test(name)) portType = 'Virtuel';
+
+    label.appendChild(cb);
+    const txt = document.createElement('span');
+    txt.textContent = name || 'Port sans nom';
+    label.appendChild(txt);
+    const tag = document.createElement('span');
+    tag.className = 'port-type';
+    tag.textContent = portType;
+    label.appendChild(tag);
+
+    list.appendChild(label);
+  });
+
+  // Auto-cocher tous les ports détectés à la première charge si rien n'est encore choisi
+  if (led.enabledOutputs.size === 0 && led.midiOutputs.length > 0) {
+    const saved = localStorage.getItem('sanctus-midi-ports');
+    if (saved) {
+      JSON.parse(saved).forEach(id => {
+        if (led.midiOutputs.find(o => o.id === id)) led.enabledOutputs.add(id);
+      });
+    } else {
+      // par défaut, tout cocher
+      led.midiOutputs.forEach(o => led.enabledOutputs.add(o.id));
+    }
+    renderMIDIPortsList(); // re-render avec sélection
+  }
+}
+
+function saveMIDISelection(){
+  localStorage.setItem('sanctus-midi-ports', JSON.stringify([...led.enabledOutputs]));
+}
+
+function midiSendNoteOn(note, velocity = 100){
+  if (!led.midiAccess) return;
+  led.enabledOutputs.forEach(id => {
+    const out = led.midiOutputs.find(o => o.id === id);
+    if (out) {
+      try { out.send([0x90, note, velocity]); } catch(e){}
+    }
+  });
+}
+
+function midiSendNoteOff(note){
+  if (!led.midiAccess) return;
+  led.enabledOutputs.forEach(id => {
+    const out = led.midiOutputs.find(o => o.id === id);
+    if (out) {
+      try { out.send([0x80, note, 0]); } catch(e){}
+    }
+  });
+}
+
+function midiAllOff(){
+  // éteindre toutes les notes en cours
+  led.lastSentNotes.forEach(n => midiSendNoteOff(n));
+  led.lastSentNotes = [];
+  // panic message — Control Change 123 (All Notes Off)
+  if (!led.midiAccess) return;
+  led.enabledOutputs.forEach(id => {
+    const out = led.midiOutputs.find(o => o.id === id);
+    if (out) {
+      try {
+        out.send([0xB0, 123, 0]);  // all notes off ch 1
+      } catch(e){}
+    }
+  });
+}
+
+/* ─── HTTP ─── */
+async function ledTest(){
+  const url = document.getElementById('jamled-url').value.trim();
+  led.url = url;
+  setLedStatus('connecting', 'Test en cours…');
+  try {
+    const r = await fetch(`${url}/sanctus/clear`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, mode: 'cors'
+    });
+    if (r.ok) { setLedStatus('ok', `Connecté à ${url}`); return true; }
+    setLedStatus('error', `Erreur HTTP ${r.status}`);
+    return false;
+  } catch (e) {
+    setLedStatus('error', `Connexion échouée — ${e.message}`);
+    return false;
+  }
+}
+
+async function httpPost(current, next, blink){
+  try {
+    await fetch(`${led.url}/sanctus/notes`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, mode: 'cors',
+      body: JSON.stringify({ current, next, blink })
+    });
+  } catch (e) { console.warn('HTTP post failed:', e); }
+}
+
+async function httpClear(){
+  try {
+    await fetch(`${led.url}/sanctus/clear`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, mode: 'cors'
+    });
+  } catch(e) {}
+}
+
+/* ─── Mode guide unifié ─── */
+async function ledSendChord(currentIdx){
+  if (!led.enabled) return;
+  const cur = state.chords[currentIdx];
+  const nxt = state.chords[(currentIdx + 1) % state.chords.length];
+  const currentNotes = chordToMidiNotes(cur, led.octave);
+  const nextNotes = chordToMidiNotes(nxt, led.octave);
+
+  if (led.mode === 'midi') {
+    // Mode MIDI direct : éteindre les anciennes, allumer les nouvelles
+    led.lastSentNotes.forEach(n => midiSendNoteOff(n));
+    currentNotes.forEach(n => midiSendNoteOn(n, 100));
+    led.lastSentNotes = [...currentNotes];
+    if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
+  } else {
+    // Mode HTTP guide : clignotement next
+    if (led.blinkInterval) clearInterval(led.blinkInterval);
+    led.blinkOn = true;
+    await httpPost(currentNotes, nextNotes, true);
+    led.blinkInterval = setInterval(async () => {
+      led.blinkOn = !led.blinkOn;
+      await httpPost(currentNotes, nextNotes, led.blinkOn);
+    }, 500);
+  }
+}
+
+async function ledClear(){
+  if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
+  midiAllOff();
+  await httpClear();
+}
+
+function setLedStatus(level, text){
+  const ind = document.getElementById('led-indicator');
+  const txt = document.getElementById('led-status-text');
+  txt.textContent = text;
+  const color = level === 'ok' ? '#7fb069'
+              : level === 'error' ? '#c44'
+              : level === 'connecting' ? '#f4c430'
+              : '#6b5d4d';
+  ind.style.background = color;
+  ind.style.color = color;
+  ind.classList.toggle('active', level === 'connecting' || (level === 'ok' && led.enabled));
+}
+
+function ledToggle(){
+  led.enabled = !led.enabled;
+  const btn = document.getElementById('led-toggle');
+  if (led.enabled) {
+    btn.textContent = '⏼ LEDs activées';
+    btn.style.background = 'linear-gradient(180deg, #7fb069, #5a6b3f)';
+    btn.style.color = '#0f0a06';
+    btn.style.borderColor = '#7fb069';
+    const modeLabel = led.mode === 'midi' ? 'MIDI direct' : 'HTTP guide';
+    setLedStatus('ok', `${modeLabel} activé`);
+    if (state.playing) ledSendChord(state.currentChordIdx);
+  } else {
+    btn.textContent = '⏻ LEDs désactivées';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    setLedStatus('idle', 'En attente');
+    ledClear();
+  }
+}
+
+/* Toggle UI selon le mode */
+function updateLedModeUI(){
+  const httpGroup = document.getElementById('http-url-group');
+  const midiSection = document.getElementById('midi-ports-section');
+  if (led.mode === 'midi') {
+    httpGroup.style.opacity = '0.5';
+    midiSection.style.opacity = '1';
+  } else {
+    httpGroup.style.opacity = '1';
+    midiSection.style.opacity = '0.5';
+  }
+}
+
+/* ─── Events ─── */
+document.getElementById('led-mode').addEventListener('change', e => {
+  led.mode = e.target.value;
+  updateLedModeUI();
+  if (led.enabled) {
+    ledClear();
+    if (state.playing) setTimeout(() => ledSendChord(state.currentChordIdx), 100);
+  }
+});
+document.getElementById('led-toggle').addEventListener('click', ledToggle);
+document.getElementById('led-clear').addEventListener('click', ledClear);
+document.getElementById('jamled-url').addEventListener('change', e => { led.url = e.target.value.trim(); });
+document.getElementById('led-octave').addEventListener('change', e => {
+  led.octave = parseInt(e.target.value);
+  if (led.enabled && state.playing) ledSendChord(state.currentChordIdx);
+});
+
+// Initialiser MIDI au chargement
+initMIDI();
+updateLedModeUI();
+
+document.getElementById('key').addEventListener('change', e => { state.key = e.target.value; regenerate(); });
+document.getElementById('mode').addEventListener('change', e => {
+  state.mode = e.target.value; buildProgressionList(); regenerate();
+});
+document.getElementById('style').addEventListener('change', e => {
+  state.style = e.target.value;
+  const def = STYLE_DEFAULTS[state.style];
+  state.progName = def.prog; state.tempo = def.tempo; state.barsPerChord = def.bars;
+  if (def.mode) {
+    state.mode = def.mode;
+    document.getElementById('mode').value = def.mode;
+  }
+  document.getElementById('tempo').value = state.tempo;
+  document.getElementById('barsPerChord').value = state.barsPerChord;
+  state.rhythm = JSON.parse(JSON.stringify(RHYTHM_PATTERNS[state.style]));
+  if (!(state.progName in PROGRESSIONS[state.mode])) state.progName = Object.keys(PROGRESSIONS[state.mode])[0];
+  buildProgressionList();
+  document.getElementById('progression').value = state.progName;
+  regenerate(); renderRhythm();
+  if (state.playing) Tone.Transport.bpm.value = state.tempo;
+
+  // Activer/désactiver le mode prophétique visuel
+  document.body.classList.toggle('prophetic', state.style === 'prophetic');
+  document.body.classList.toggle('soaking', state.style === 'soaking');
+  document.body.classList.toggle('strings', state.style === 'strings');
+  document.body.classList.toggle('harp', state.style === 'harp');
+  toggleEmbers(state.style === 'prophetic');
+  toggleStars(state.style === 'soaking');
+  toggleWaves(state.style === 'strings');
+  toggleHarpStrings(state.style === 'harp');
+});
+document.getElementById('progression').addEventListener('change', e => { state.progName = e.target.value; regenerate(); });
+document.getElementById('tempo').addEventListener('input', e => {
+  state.tempo = parseInt(e.target.value) || 72;
+  if (state.playing) Tone.Transport.bpm.value = state.tempo;
+});
+document.getElementById('barsPerChord').addEventListener('change', e => { state.barsPerChord = parseInt(e.target.value); });
+document.getElementById('regenerate').addEventListener('click', regenerate);
+document.getElementById('randomize-rhythm').addEventListener('click', randomizeRhythm);
+document.getElementById('play').addEventListener('click', () => {
+  if (state.playing) stopPlayback(); else startPlayback();
+});
+
+buildProgressionList();
+generateChords();
+renderChords();
+renderScrollChords();
+renderRhythm();
+setTimeout(() => scrollToCurrentChord(0), 100);
+</script>
+</body>
+</html>
