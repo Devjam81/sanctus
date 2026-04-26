@@ -1496,6 +1496,10 @@
           <option value="salamander">🎹 Vrai piano Salamander (chargement ~10 Mo)</option>
         </select>
       </div>
+      <div class="control-group"><label>Volume <span id="volume-display" style="float: right; color: var(--gold-bright); font-family: 'JetBrains Mono', monospace;">75%</span></label>
+        <input type="range" id="volume-slider" min="0" max="100" value="75"
+               style="width: 100%; accent-color: var(--gold-bright); cursor: pointer; height: 1.5rem;">
+      </div>
     </div>
     <div id="soundbank-status" style="margin-top: 1rem; text-align: center; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.2em; color: var(--soft); text-transform: uppercase; min-height: 1rem;"></div>
   </section>
@@ -1579,6 +1583,13 @@
       <span class="indicator" id="led-indicator"></span>
       <span id="led-status-text">En attente</span>
     </div>
+    <details style="margin-top: 1rem;">
+      <summary style="cursor: pointer; font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; opacity: 0.7;">Console de diagnostic MIDI</summary>
+      <div id="led-debug" style="margin-top: 0.75rem; max-height: 200px; overflow-y: auto; background: rgba(15, 10, 6, 0.8); border: 1px solid rgba(184, 134, 11, 0.3); padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--paper); line-height: 1.4;">
+        <div style="color: var(--soft);">En attente d'activité MIDI…</div>
+      </div>
+      <button class="btn" id="led-test-note" style="margin-top: 0.75rem; font-size: 0.7rem;">⚡ Envoyer note de test (Do4)</button>
+    </details>
   </section>
 
   <section class="panel">
@@ -2733,6 +2744,10 @@ function refreshMIDIPorts(){
   led.midiAccess.outputs.forEach(out => {
     led.midiOutputs.push(out);
   });
+  midiDebugLog(`◉ ${led.midiOutputs.length} port(s) MIDI OUT détecté(s)`, led.midiOutputs.length > 0 ? 'ok' : 'warn');
+  led.midiOutputs.forEach(out => {
+    midiDebugLog(`   • "${out.name}" (id: ${out.id.substring(0, 12)}…)`, 'info');
+  });
   renderMIDIPortsList();
 }
 
@@ -2753,8 +2768,13 @@ function renderMIDIPortsList(){
     cb.type = 'checkbox';
     cb.checked = isActive;
     cb.addEventListener('change', () => {
-      if (cb.checked) led.enabledOutputs.add(out.id);
-      else led.enabledOutputs.delete(out.id);
+      if (cb.checked) {
+        led.enabledOutputs.add(out.id);
+        midiDebugLog(`✓ Port activé : "${out.name}"`, 'ok');
+      } else {
+        led.enabledOutputs.delete(out.id);
+        midiDebugLog(`◯ Port désactivé : "${out.name}"`, 'info');
+      }
       label.classList.toggle('active', cb.checked);
       saveMIDISelection();
     });
@@ -2797,15 +2817,42 @@ function saveMIDISelection(){
   localStorage.setItem('sanctus-midi-ports', JSON.stringify([...led.enabledOutputs]));
 }
 
+function midiDebugLog(msg, type = 'info'){
+  const debug = document.getElementById('led-debug');
+  if (!debug) return;
+  const colors = { info: '#f5ede0', ok: '#7fb069', warn: '#f4c430', error: '#c44', send: '#9fb8d8' };
+  const time = new Date().toLocaleTimeString('fr-FR', { hour12: false });
+  const line = document.createElement('div');
+  line.style.color = colors[type] || '#f5ede0';
+  line.textContent = `[${time}] ${msg}`;
+  // Garder seulement les 30 dernières lignes
+  if (debug.children.length > 30) debug.removeChild(debug.firstChild);
+  // Retirer le placeholder initial s'il existe
+  if (debug.children.length === 1 && debug.firstChild.textContent.includes('En attente')) {
+    debug.innerHTML = '';
+  }
+  debug.appendChild(line);
+  debug.scrollTop = debug.scrollHeight;
+}
+
 function midiSendNoteOn(note, velocity = 100){
-  if (!led.midiAccess) return;
-  const ch = (led.channel - 1) & 0x0F;  // canal MIDI 0-15
+  if (!led.midiAccess) {
+    midiDebugLog('⚠ Pas d\'accès MIDI', 'warn');
+    return;
+  }
+  const ch = (led.channel - 1) & 0x0F;
+  let sentTo = 0;
   led.enabledOutputs.forEach(id => {
     const out = led.midiOutputs.find(o => o.id === id);
     if (out) {
-      try { out.send([0x90 | ch, note, velocity]); } catch(e){}
+      try {
+        out.send([0x90 | ch, note, velocity]);
+        sentTo++;
+      } catch(e){ midiDebugLog(`✗ Erreur envoi: ${e.message}`, 'error'); }
     }
   });
+  if (sentTo > 0) midiDebugLog(`→ Note ON ${note} (vel=${velocity}, ch=${led.channel}) sur ${sentTo} port(s)`, 'send');
+  else midiDebugLog(`⚠ Aucun port coché pour Note ON ${note}`, 'warn');
 }
 
 function midiSendNoteOff(note){
@@ -2827,11 +2874,10 @@ function midiAllOff(){
   led.enabledOutputs.forEach(id => {
     const out = led.midiOutputs.find(o => o.id === id);
     if (out) {
-      try {
-        out.send([0xB0 | ch, 123, 0]);  // all notes off sur le canal sélectionné
-      } catch(e){}
+      try { out.send([0xB0 | ch, 123, 0]); } catch(e){}
     }
   });
+  midiDebugLog(`◯ All Notes Off envoyé (ch=${led.channel})`, 'info');
 }
 
 /* ─── HTTP ─── */
@@ -2877,14 +2923,14 @@ async function ledSendChord(currentIdx){
   const currentNotes = chordToMidiNotes(cur, led.octave);
   const nextNotes = chordToMidiNotes(nxt, led.octave);
 
+  midiDebugLog(`♪ Accord ${cur.root}${cur.quality} → notes MIDI [${currentNotes.join(', ')}]`, 'info');
+
   if (led.mode === 'midi') {
-    // Mode MIDI direct : éteindre les anciennes, allumer les nouvelles
     led.lastSentNotes.forEach(n => midiSendNoteOff(n));
     currentNotes.forEach(n => midiSendNoteOn(n, 100));
     led.lastSentNotes = [...currentNotes];
     if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
   } else {
-    // Mode HTTP guide : clignotement next
     if (led.blinkInterval) clearInterval(led.blinkInterval);
     led.blinkOn = true;
     await httpPost(currentNotes, nextNotes, true);
@@ -2924,6 +2970,11 @@ function ledToggle(){
     btn.style.borderColor = '#7fb069';
     const modeLabel = led.mode === 'midi' ? 'MIDI direct' : 'HTTP guide';
     setLedStatus('ok', `${modeLabel} activé`);
+    midiDebugLog(`✓ LEDs ACTIVÉES — mode: ${led.mode}, canal: ${led.channel}, octave: ${led.octave}`, 'ok');
+    midiDebugLog(`   ${led.enabledOutputs.size} port(s) coché(s) sur ${led.midiOutputs.length} dispo`, led.enabledOutputs.size > 0 ? 'ok' : 'warn');
+    if (led.enabledOutputs.size === 0 && led.mode === 'midi') {
+      midiDebugLog(`⚠ ATTENTION : aucun port MIDI coché ! Coche un port dans la liste ci-dessus.`, 'error');
+    }
     if (state.playing) ledSendChord(state.currentChordIdx);
   } else {
     btn.textContent = '⏻ LEDs désactivées';
@@ -2931,6 +2982,7 @@ function ledToggle(){
     btn.style.color = '';
     btn.style.borderColor = '';
     setLedStatus('idle', 'En attente');
+    midiDebugLog(`◯ LEDs DÉSACTIVÉES`, 'info');
     ledClear();
   }
 }
@@ -2967,11 +3019,33 @@ document.getElementById('led-octave').addEventListener('change', e => {
 
 document.getElementById('led-channel').addEventListener('change', e => {
   led.channel = parseInt(e.target.value);
-  // Éteindre les notes en cours sur l'ancien canal et redémarrer sur le nouveau
+  midiDebugLog(`◉ Canal MIDI changé : ${led.channel}`, 'info');
   if (led.enabled) {
     midiAllOff();
     if (state.playing) setTimeout(() => ledSendChord(state.currentChordIdx), 100);
   }
+});
+
+document.getElementById('led-test-note').addEventListener('click', () => {
+  midiDebugLog(`▶ Test : envoi Do4 (note MIDI 60)`, 'send');
+  if (!led.midiAccess) {
+    midiDebugLog(`✗ Pas d'accès MIDI — vérifie que le navigateur a la permission`, 'error');
+    return;
+  }
+  if (led.midiOutputs.length === 0) {
+    midiDebugLog(`✗ Aucun port MIDI détecté — branche le piano ou installe un port virtuel`, 'error');
+    return;
+  }
+  if (led.enabledOutputs.size === 0) {
+    midiDebugLog(`✗ Coche au moins un port dans la liste !`, 'error');
+    return;
+  }
+  // Envoyer Do4 = 60, attendre 1s, éteindre
+  midiSendNoteOn(60, 100);
+  setTimeout(() => {
+    midiSendNoteOff(60);
+    midiDebugLog(`◯ Note Do4 relâchée`, 'info');
+  }, 1000);
 });
 
 // Initialiser MIDI au chargement
@@ -3020,6 +3094,28 @@ document.getElementById('barsPerChord').addEventListener('change', e => { state.
 document.getElementById('soundbank').addEventListener('change', async e => {
   await activateSoundbank(e.target.value);
 });
+
+document.getElementById('volume-slider').addEventListener('input', e => {
+  const pct = parseInt(e.target.value);
+  document.getElementById('volume-display').textContent = pct + '%';
+  // Convertir pourcentage en dB : 0% = -60dB (quasi muet), 100% = 0dB (max)
+  // Échelle exponentielle pour ressentir le volume comme l'oreille
+  if (pct === 0) {
+    Tone.Destination.mute = true;
+  } else {
+    Tone.Destination.mute = false;
+    // Mapping : 0-100% → -40dB à +6dB
+    const db = -40 + (pct / 100) * 46;
+    Tone.Destination.volume.value = db;
+  }
+});
+
+// Volume initial à 75%
+if (typeof Tone !== 'undefined') {
+  setTimeout(() => {
+    if (Tone.Destination) Tone.Destination.volume.value = -40 + 0.75 * 46;
+  }, 100);
+}
 document.getElementById('regenerate').addEventListener('click', regenerate);
 document.getElementById('randomize-rhythm').addEventListener('click', randomizeRhythm);
 document.getElementById('play').addEventListener('click', () => {
