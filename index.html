@@ -1544,6 +1544,7 @@
     <button class="btn-primary btn" id="play">▶ Démarrer</button>
     <button class="btn" id="randomize-rhythm">↻ Nouveau rythme</button>
     <button class="btn" id="led-clear">⏻ Éteindre LEDs</button>
+    <button class="btn" id="export-midi" style="background: linear-gradient(180deg, rgba(244, 196, 48, 0.15), rgba(184, 134, 11, 0.1)); border-color: rgba(244, 196, 48, 0.4);">📥 Exporter MIDI</button>
   </div>
 
   <div class="count-display">
@@ -3310,17 +3311,11 @@ function midiSendNoteOff(note){
 }
 
 function midiAllOff(){
+  // Éteindre uniquement les notes qu'on a allumées nous-mêmes
+  // PAS de CC 123 (All Notes Off) qui peut désactiver le clavier sur certains pianos
   led.lastSentNotes.forEach(n => midiSendNoteOff(n));
   led.lastSentNotes = [];
-  if (!led.midiAccess) return;
-  const ch = (led.channel - 1) & 0x0F;
-  led.enabledOutputs.forEach(id => {
-    const out = led.midiOutputs.find(o => o.id === id);
-    if (out) {
-      try { out.send([0xB0 | ch, 123, 0]); } catch(e){}
-    }
-  });
-  midiDebugLog(`◯ All Notes Off envoyé (ch=${led.channel})`, 'info');
+  midiDebugLog(`◯ Notes éteintes (sans CC123 — ton clavier reste actif)`, 'info');
 }
 
 /* ─── HTTP ─── */
@@ -3807,6 +3802,248 @@ document.getElementById('rhythm-volume-slider').addEventListener('input', e => {
 });
 
 document.getElementById('regenerate').addEventListener('click', regenerate);
+
+/* ============================================================
+   EXPORT MIDI — Génère un fichier MIDI standard téléchargeable
+   ============================================================ */
+
+// Encodeur MIDI minimaliste (Type 1, 2 pistes)
+function exportToMIDI(){
+  const tempo = state.tempo;
+  const ticksPerQuarter = 480;
+  const barsPerChord = state.barsPerChord;
+  const ticksPerBar = ticksPerQuarter * 4;
+  const ticksPerChord = ticksPerBar * barsPerChord;
+  const repeats = 4; // Répéter la progression 4 fois pour avoir de la matière
+
+  const chords = state.chords;
+
+  // ─── Construire les events MIDI ───
+  // Track 1 : Main gauche (basse)
+  const leftEvents = [];
+  // Track 2 : Main droite (accord)
+  const rightEvents = [];
+
+  for (let r = 0; r < repeats; r++) {
+    chords.forEach((chord, i) => {
+      const chordStart = (r * chords.length + i) * ticksPerChord;
+      const chordEnd = chordStart + ticksPerChord - 10; // petit espace entre accords
+
+      // ─── Main gauche : basse à l'octave grave (octave 2) ───
+      const bassMidi = noteToMidi(chord.notes[0], 2);
+      if (bassMidi !== null) {
+        leftEvents.push({ tick: chordStart, type: 'on', note: bassMidi, vel: 80 });
+        leftEvents.push({ tick: chordEnd, type: 'off', note: bassMidi, vel: 0 });
+      }
+
+      // ─── Main droite : accord à 3 voix (octave 4) ───
+      // Voicing : root (4), tierce (4), quinte (4) — voicing close
+      chord.notes.forEach((noteName, idx) => {
+        const oct = 4;
+        const midi = noteToMidi(noteName, oct);
+        if (midi !== null) {
+          rightEvents.push({ tick: chordStart, type: 'on', note: midi, vel: 75 });
+          rightEvents.push({ tick: chordEnd, type: 'off', note: midi, vel: 0 });
+        }
+      });
+
+      // Style intimité/soaking : ajouter une mélodie d'arpège main droite
+      if (state.style === 'intimite' || state.style === 'soaking' || state.style === 'harp') {
+        const root = noteToMidi(chord.notes[0], 5);
+        const third = noteToMidi(chord.notes[1], 5);
+        const fifth = noteToMidi(chord.notes[2], 5);
+        const arpNotes = state.style === 'harp'
+          ? [root, third, fifth, root + 12, fifth, third]
+          : [fifth, root, third, root];
+        const arpStep = ticksPerChord / arpNotes.length;
+        arpNotes.forEach((n, ai) => {
+          if (n !== null) {
+            const t = chordStart + ai * arpStep;
+            rightEvents.push({ tick: t, type: 'on', note: n, vel: 55 });
+            rightEvents.push({ tick: t + arpStep - 20, type: 'off', note: n, vel: 0 });
+          }
+        });
+      }
+    });
+  }
+
+  // ─── Construire les bytes MIDI ───
+  const microsecondsPerQuarter = Math.floor(60000000 / tempo);
+  const tempoBytes = [
+    (microsecondsPerQuarter >> 16) & 0xFF,
+    (microsecondsPerQuarter >> 8) & 0xFF,
+    microsecondsPerQuarter & 0xFF
+  ];
+
+  // Track 1 : Tempo + Time signature + Main gauche
+  const track1 = buildTrack(leftEvents, [
+    [0, 0xFF, 0x51, 0x03, ...tempoBytes], // Set Tempo
+    [0, 0xFF, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08], // Time signature 4/4
+    [0, 0xC0, 0x00] // Program change : Acoustic Grand Piano
+  ], 'Bass');
+
+  // Track 2 : Main droite
+  const track2 = buildTrack(rightEvents, [
+    [0, 0xC1, 0x00] // Channel 2 : Acoustic Grand Piano
+  ], 'Chords');
+
+  // Header chunk
+  const header = [
+    0x4D, 0x54, 0x68, 0x64, // "MThd"
+    0x00, 0x00, 0x00, 0x06, // length 6
+    0x00, 0x01,             // format 1
+    0x00, 0x02,             // 2 tracks
+    (ticksPerQuarter >> 8) & 0xFF, ticksPerQuarter & 0xFF
+  ];
+
+  // Combiner tout
+  const allBytes = [...header, ...track1, ...track2];
+  const uint8 = new Uint8Array(allBytes);
+
+  // ─── Télécharger ───
+  const blob = new Blob([uint8], { type: 'audio/midi' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const styleName = state.style.replace(/[^a-z0-9]/gi, '_');
+  const tonalite = state.key + (state.mode === 'minor' ? 'm' : '');
+  const progName = state.progName.replace(/[^a-z0-9]/gi, '_');
+  a.href = url;
+  a.download = `veni-spiritus_${tonalite}_${styleName}_${progName}_${tempo}bpm.mid`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+
+  return a.download;
+}
+
+// Construit une piste MIDI avec ses meta-events et ses note events
+function buildTrack(events, prefixEvents, name){
+  // Trier les events par tick
+  events.sort((a, b) => a.tick - b.tick || (a.type === 'off' ? -1 : 1));
+
+  const trackBytes = [];
+
+  // Meta : nom de la piste
+  const nameBytes = name.split('').map(c => c.charCodeAt(0));
+  trackBytes.push(...writeVarLen(0), 0xFF, 0x03, nameBytes.length, ...nameBytes);
+
+  // Prefix events (tempo, time sig, program change)
+  prefixEvents.forEach(ev => {
+    const [delta, ...rest] = ev;
+    trackBytes.push(...writeVarLen(delta), ...rest);
+  });
+
+  // Note events
+  let lastTick = 0;
+  let lastStatus = 0;
+  events.forEach(ev => {
+    const delta = ev.tick - lastTick;
+    lastTick = ev.tick;
+    trackBytes.push(...writeVarLen(delta));
+    const status = ev.type === 'on' ? 0x90 : 0x80;
+    trackBytes.push(status, ev.note, ev.vel);
+  });
+
+  // End of track
+  trackBytes.push(...writeVarLen(0), 0xFF, 0x2F, 0x00);
+
+  // Track header "MTrk" + length
+  const length = trackBytes.length;
+  return [
+    0x4D, 0x54, 0x72, 0x6B, // "MTrk"
+    (length >> 24) & 0xFF, (length >> 16) & 0xFF, (length >> 8) & 0xFF, length & 0xFF,
+    ...trackBytes
+  ];
+}
+
+// Encode un entier en variable-length quantity (MIDI)
+function writeVarLen(value){
+  const bytes = [];
+  let buffer = value & 0x7F;
+  while ((value >>= 7) > 0) {
+    buffer <<= 8;
+    buffer |= 0x80;
+    buffer += (value & 0x7F);
+  }
+  while (true) {
+    bytes.push(buffer & 0xFF);
+    if (buffer & 0x80) buffer >>= 8;
+    else break;
+  }
+  return bytes;
+}
+
+document.getElementById('export-midi').addEventListener('click', () => {
+  try {
+    const filename = exportToMIDI();
+    showMidiExportToast(filename);
+  } catch(e) {
+    console.error('Export MIDI error:', e);
+    alert('Erreur lors de l\'export : ' + e.message);
+  }
+});
+
+function showMidiExportToast(filename){
+  // Créer un toast élégant qui explique comment utiliser le fichier
+  const existing = document.getElementById('midi-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'midi-toast';
+  toast.innerHTML = `
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                background: linear-gradient(180deg, rgba(31, 24, 18, 0.98), rgba(15, 10, 6, 0.98));
+                border: 2px solid var(--gold); border-radius: 8px; padding: 2.5rem 3rem;
+                max-width: 600px; box-shadow: 0 20px 80px rgba(0,0,0,0.8), 0 0 60px rgba(244, 196, 48, 0.3);
+                font-family: 'Cormorant Garamond', serif; color: var(--paper);">
+
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <div style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.4em; color: var(--gold); text-transform: uppercase; margin-bottom: 0.5rem;">
+          ✦ Fichier MIDI exporté ✦
+        </div>
+        <div style="font-size: 1.4rem; color: var(--gold-bright); font-style: italic; margin-bottom: 0.3rem;">
+          ${filename}
+        </div>
+        <div style="font-size: 0.85rem; color: var(--soft); font-style: italic;">
+          Téléchargement lancé · 4 répétitions de la progression
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid rgba(184, 134, 11, 0.3); padding-top: 1.5rem;">
+        <div style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; margin-bottom: 1rem;">
+          🎹 Pour activer les Stream Lights du P-S500
+        </div>
+
+        <ol style="font-size: 1rem; line-height: 1.8; padding-left: 1.5rem; color: var(--paper);">
+          <li>Transfère le fichier <strong>.mid</strong> sur ton téléphone (AirDrop, USB, email)</li>
+          <li>Ouvre l'app <strong>Smart Pianist</strong> connectée à ton P-S500</li>
+          <li>Touche <strong>"User Songs"</strong> → <strong>"+"</strong> ou icône importer</li>
+          <li>Sélectionne le fichier MIDI</li>
+          <li>Le morceau apparaît dans tes morceaux → <strong>active "Stream Lights"</strong></li>
+          <li>Touche <strong>▶ PLAY</strong> → les Stream Lights défilent ! 💡</li>
+        </ol>
+
+        <div style="background: rgba(15, 10, 6, 0.6); border-left: 2px solid var(--gold); padding: 0.75rem 1rem; margin-top: 1.2rem; font-style: italic; font-size: 0.95rem; opacity: 0.9;">
+          💡 <strong>Astuce</strong> : tu peux aussi ouvrir le fichier dans <strong>GarageBand, Logic, Ableton, Cubase</strong> ou tout DAW qui lit le MIDI standard.
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('midi-toast').remove()" style="
+        margin-top: 1.5rem; width: 100%; padding: 0.75rem;
+        background: linear-gradient(180deg, rgba(244, 196, 48, 0.2), rgba(184, 134, 11, 0.15));
+        border: 1px solid var(--gold); color: var(--gold-bright);
+        font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.3em;
+        text-transform: uppercase; cursor: pointer; border-radius: 4px;">
+        ✓ Compris
+      </button>
+    </div>
+    <div onclick="document.getElementById('midi-toast').remove()" style="
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9998;
+      backdrop-filter: blur(4px); cursor: pointer;"></div>
+  `;
+  document.body.appendChild(toast);
+}
 document.getElementById('randomize-rhythm').addEventListener('click', randomizeRhythm);
 document.getElementById('play').addEventListener('click', () => {
   if (state.playing) stopPlayback(); else startPlayback();
