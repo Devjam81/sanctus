@@ -3193,10 +3193,41 @@ async function initMIDI(){
     led.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
     refreshMIDIPorts();
     led.midiAccess.onstatechange = refreshMIDIPorts;
+    // Démarre le handshake Active Sensing (0xFE) pour que le piano nous reconnaisse
+    startActiveSensing();
   } catch(e) {
     setLedStatus('error', 'Accès MIDI refusé');
     document.getElementById('midi-ports-list').innerHTML =
       '<span style="color: #c44; font-family: \'Cormorant Garamond\', serif;">Accès MIDI refusé</span>';
+  }
+}
+
+/* ============================================================
+   ACTIVE SENSING (0xFE) — Maintien la connexion MIDI vivante
+   Le Yamaha P-S500 envoie 0xFE toutes les 200ms et attend
+   qu'on lui réponde aussi sinon il coupe les notes par sécurité.
+   ============================================================ */
+let activeSensingInterval = null;
+
+function startActiveSensing(){
+  if (activeSensingInterval) clearInterval(activeSensingInterval);
+  // Envoie 0xFE toutes les 250ms à TOUS les ports MIDI OUT cochés
+  activeSensingInterval = setInterval(() => {
+    if (!led.midiAccess) return;
+    led.enabledOutputs.forEach(id => {
+      const out = led.midiOutputs.find(o => o.id === id);
+      if (out) {
+        try { out.send([0xFE]); } catch(e){}
+      }
+    });
+  }, 250);
+  midiDebugLog(`✦ Handshake Active Sensing démarré (0xFE toutes les 250ms)`, 'ok');
+}
+
+function stopActiveSensing(){
+  if (activeSensingInterval) {
+    clearInterval(activeSensingInterval);
+    activeSensingInterval = null;
   }
 }
 
