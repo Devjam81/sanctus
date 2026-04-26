@@ -1527,6 +1527,39 @@
       </div>
     </div>
     <div id="soundbank-status" style="margin-top: 1rem; text-align: center; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.2em; color: var(--soft); text-transform: uppercase; min-height: 1rem;"></div>
+
+    <!-- Mode Prophétique : variations + embellissements -->
+    <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: linear-gradient(180deg, rgba(244, 196, 48, 0.05), rgba(184, 134, 11, 0.03)); border: 1px solid rgba(244, 196, 48, 0.25); border-radius: 4px;">
+      <div style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; margin-bottom: 0.85rem; text-align: center;">
+        ✦ Mode prophétique — jeu vivant ✦
+      </div>
+      <div class="controls" style="margin-bottom: 0;">
+        <div class="control-group"><label>Activation</label>
+          <button class="btn" id="prophetic-toggle" style="height: 100%;">⏻ Mode standard</button>
+        </div>
+        <div class="control-group"><label>Variation voicings</label>
+          <select id="prophetic-voicings">
+            <option value="off">Aucune</option>
+            <option value="subtle" selected>Subtile (chaque cycle)</option>
+            <option value="active">Active (chaque accord)</option>
+          </select>
+        </div>
+        <div class="control-group"><label>Embellissements aigus <span id="prophetic-flourish-display" style="float: right; color: var(--gold-bright); font-family: 'JetBrains Mono', monospace;">30%</span></label>
+          <input type="range" id="prophetic-flourish" min="0" max="100" value="30"
+                 style="width: 100%; accent-color: var(--gold-bright); cursor: pointer; height: 1.5rem;">
+        </div>
+        <div class="control-group"><label>Notes de passage</label>
+          <select id="prophetic-passing">
+            <option value="off">Désactivées</option>
+            <option value="subtle" selected>Subtiles</option>
+            <option value="active">Actives</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 0.85rem; padding: 0.6rem 0.85rem; background: rgba(15, 10, 6, 0.4); border-left: 2px solid var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.85rem; color: var(--paper); opacity: 0.85; line-height: 1.5;">
+        🕊️ Le mode prophétique fait <strong>évoluer le jeu à chaque cycle</strong> — voicings différents, mélodies improvisées aux aigus, notes de passage. Toujours dans la mesure et la tonalité, mais <strong>jamais identique</strong>.
+      </div>
+    </div>
   </section>
 
   <section class="progression-stage">
@@ -3038,14 +3071,31 @@ async function startPlayback(){
           instrument.triggerAttackRelease(note, '2n', time + (i * spacing) + jitter, 0.55);
         });
       } else {
-        const voicing = [chord.notes[0] + '3', chord.notes[1] + '4', chord.notes[2] + '4'];
-        const dur = (isSoaking ? 4 : state.barsPerChord) + 'm';
-        // Utilise la banque active si elle existe, sinon le piano par défaut
         const instrument = getActiveChordInstrument();
+        const dur = (isSoaking ? 4 : state.barsPerChord) + 'm';
+        const durSec = state.barsPerChord * 4 * 60 / state.tempo;
+
+        // Voicing : standard ou prophétique selon le mode
+        const voicing = prophetic.enabled
+          ? getVariedVoicing(chord, 4)
+          : [chord.notes[0] + '3', chord.notes[1] + '4', chord.notes[2] + '4'];
+
         instrument.triggerAttackRelease(voicing, state.barsPerChord + 'm', time);
+
         // Toujours jouer la basse (sauf si banque déjà très grave comme prophetic_inst)
         if (currentSoundbank !== 'prophetic_inst') {
           bassSynth.triggerAttackRelease(bass, state.barsPerChord + 'm', time);
+        }
+
+        // Mode prophétique : ajouter embellissements et notes de passage
+        if (prophetic.enabled) {
+          generateFlourish(chord, time, durSec, instrument);
+          // Note de passage vers le prochain accord
+          const nextIdx = (chordIdx + 1) % state.chords.length;
+          const nextChord = state.chords[nextIdx];
+          generatePassingNote(chord, nextChord, time, durSec, instrument);
+          // Incrémenter le cycle pour les variations
+          prophetic.cycleCount++;
         }
       }
       Tone.Draw.schedule(() => highlightChord(chordIdx), time);
@@ -3076,6 +3126,9 @@ async function startPlayback(){
   loop.start(0);
   Tone.Transport.start();
   state.playing = true;
+  // Reset compteur prophétique pour démarrer frais
+  prophetic.cycleCount = 0;
+  prophetic.lastVoicingIdx = -1;
   const btn = document.getElementById('play');
   btn.textContent = '■ Arrêter';
   btn.classList.add('playing');
@@ -3900,6 +3953,180 @@ document.getElementById('rhythm-volume-slider').addEventListener('input', e => {
     });
     cb.parentElement.classList.toggle('active', cb.checked);
   }
+});
+
+/* ============================================================
+   MODE PROPHÉTIQUE — Jeu vivant qui ne se répète jamais
+   - Voicings variés (close, drop2, spread, stack)
+   - Embellissements mélodiques aux aigus
+   - Notes de passage entre accords
+   - Toujours dans la mesure et la tonalité
+   ============================================================ */
+const prophetic = {
+  enabled: false,
+  voicings: 'subtle',     // 'off' | 'subtle' | 'active'
+  flourish: 0.30,         // probabilité 0-1 d'embellissement par accord
+  passing: 'subtle',      // 'off' | 'subtle' | 'active'
+  cycleCount: 0,          // compteur de cycle pour variations
+  lastVoicingIdx: -1
+};
+
+// Génère un voicing différent à chaque appel selon le mode
+function getVariedVoicing(chord, octave){
+  const root = chord.notes[0];
+  const third = chord.notes[1];
+  const fifth = chord.notes[2];
+
+  if (prophetic.voicings === 'off') {
+    return [root + (octave - 1), third + octave, fifth + octave];
+  }
+
+  // Pool de voicings disponibles (musicalement valides)
+  const voicings = [
+    // Close position (compact)
+    [root + (octave - 1), third + octave, fifth + octave],
+    // Drop 2 (la 2e voix descend d'une octave)
+    [third + (octave - 1), root + octave, fifth + octave],
+    // Spread (large espacement)
+    [root + (octave - 2), fifth + (octave - 1), third + octave],
+    // Stack (3 voix proches en haut)
+    [root + (octave - 1), fifth + octave, third + (octave + 1)],
+    // Inversion 1 (tierce en bas)
+    [third + (octave - 1), fifth + octave, root + (octave + 1)],
+    // Inversion 2 (quinte en bas)
+    [fifth + (octave - 1), root + octave, third + octave],
+    // Open voicing (octaves doublées)
+    [root + (octave - 1), third + octave, root + (octave + 1)]
+  ];
+
+  let idx;
+  if (prophetic.voicings === 'subtle') {
+    // Change tous les 4 accords
+    idx = Math.floor(prophetic.cycleCount / 4) % voicings.length;
+  } else {
+    // Active : change à chaque accord (mais évite de répéter)
+    do {
+      idx = Math.floor(Math.random() * voicings.length);
+    } while (idx === prophetic.lastVoicingIdx && voicings.length > 1);
+    prophetic.lastVoicingIdx = idx;
+  }
+
+  return voicings[idx];
+}
+
+// Génère les notes de la gamme actuelle (pour notes de passage et embellissements)
+function getScaleNotes(){
+  const tonicIdx = NOTES.indexOf(state.key);
+  // Gamme majeure ou mineure naturelle
+  const intervals = state.mode === 'minor'
+    ? [0, 2, 3, 5, 7, 8, 10]   // mineur naturel
+    : [0, 2, 4, 5, 7, 9, 11];  // majeur
+  return intervals.map(i => NOTES[(tonicIdx + i) % 12]);
+}
+
+// Génère un embellissement mélodique aux aigus pour un accord donné
+function generateFlourish(chord, time, durationSec, instrument){
+  if (!prophetic.enabled || Math.random() > prophetic.flourish) return;
+  if (!instrument) return;
+
+  const scale = getScaleNotes();
+  const chordTones = chord.notes;
+
+  // Choisir une octave aiguë (5 ou 6)
+  const oct = Math.random() > 0.5 ? 5 : 6;
+
+  // Pattern aléatoire : mélange de notes de l'accord + notes de passage
+  // 3-6 notes sur la durée de l'accord
+  const numNotes = 3 + Math.floor(Math.random() * 4);
+  const pattern = [];
+
+  for (let i = 0; i < numNotes; i++) {
+    let note;
+    if (Math.random() > 0.4) {
+      // Note de l'accord (probabilité haute)
+      note = chordTones[Math.floor(Math.random() * chordTones.length)];
+    } else {
+      // Note de passage (note de la gamme)
+      note = scale[Math.floor(Math.random() * scale.length)];
+    }
+    pattern.push(note + oct);
+  }
+
+  // Timing : étalé sur la durée mais avec un peu de swing
+  const noteSpacing = durationSec / numNotes;
+  pattern.forEach((noteName, i) => {
+    // Vélocité décroissante avec un pic au milieu
+    const peak = Math.min(i, numNotes - i);
+    const velocity = 0.3 + (peak / numNotes) * 0.4 + Math.random() * 0.1;
+    // Petit jitter de timing pour humaniser
+    const jitter = (Math.random() - 0.5) * 0.03;
+    const startTime = time + (i * noteSpacing) + jitter;
+    try {
+      instrument.triggerAttackRelease(noteName, '8n', startTime, velocity);
+    } catch(e){}
+  });
+}
+
+// Génère une note de passage entre deux accords (durant la dernière mesure)
+function generatePassingNote(currentChord, nextChord, time, durationSec, instrument){
+  if (!prophetic.enabled || prophetic.passing === 'off') return;
+  if (!instrument) return;
+
+  const probability = prophetic.passing === 'subtle' ? 0.25 : 0.5;
+  if (Math.random() > probability) return;
+
+  const scale = getScaleNotes();
+  const currentRoot = NOTES.indexOf(currentChord.notes[0]);
+  const nextRoot = NOTES.indexOf(nextChord.notes[0]);
+
+  // Trouver une note de la gamme entre les deux fondamentales
+  const passingCandidates = scale.filter(n => {
+    const idx = NOTES.indexOf(n);
+    if (currentRoot === nextRoot) return false;
+    const between = currentRoot < nextRoot
+      ? (idx > currentRoot && idx < nextRoot)
+      : (idx > nextRoot && idx < currentRoot);
+    return between;
+  });
+
+  if (passingCandidates.length === 0) return;
+
+  const passingNote = passingCandidates[Math.floor(Math.random() * passingCandidates.length)];
+  const oct = 4;
+  // Joue la note de passage juste avant la fin de l'accord (95% de la durée)
+  const startTime = time + durationSec * 0.85;
+  try {
+    instrument.triggerAttackRelease(passingNote + oct, '16n', startTime, 0.4);
+  } catch(e){}
+}
+
+function propheticToggle(){
+  prophetic.enabled = !prophetic.enabled;
+  const btn = document.getElementById('prophetic-toggle');
+  if (prophetic.enabled) {
+    btn.textContent = '✦ Mode prophétique';
+    btn.style.background = 'linear-gradient(180deg, rgba(244, 196, 48, 0.3), rgba(184, 134, 11, 0.2))';
+    btn.style.color = 'var(--gold-bright)';
+    btn.style.borderColor = 'var(--gold)';
+  } else {
+    btn.textContent = '⏻ Mode standard';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
+
+document.getElementById('prophetic-toggle').addEventListener('click', propheticToggle);
+document.getElementById('prophetic-voicings').addEventListener('change', e => {
+  prophetic.voicings = e.target.value;
+});
+document.getElementById('prophetic-flourish').addEventListener('input', e => {
+  const pct = parseInt(e.target.value);
+  prophetic.flourish = pct / 100;
+  document.getElementById('prophetic-flourish-display').textContent = pct + '%';
+});
+document.getElementById('prophetic-passing').addEventListener('change', e => {
+  prophetic.passing = e.target.value;
 });
 
 document.getElementById('regenerate').addEventListener('click', regenerate);
