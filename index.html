@@ -1634,6 +1634,13 @@
           <option value="boost">Amplifiée (+30)</option>
         </select>
       </div>
+      <div class="control-group"><label>Mode de sortie</label>
+        <select id="midi-in-mode">
+          <option value="synth" selected>🎵 Synthé Sanctus (banque de sons)</option>
+          <option value="thru">🔁 MIDI Thru → renvoyer au piano</option>
+          <option value="both">🎹 Les deux (synthé + piano)</option>
+        </select>
+      </div>
     </div>
     <div id="midi-in-ports-section" style="margin-top: 1.5rem;">
       <div style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); opacity: 0.85; margin-bottom: 0.75rem;">
@@ -3495,11 +3502,34 @@ updateLedModeUI();
    ============================================================ */
 const midiIn = {
   enabled: false,
-  inputs: [],          // tous les ports d'entrée détectés
-  enabledInputs: new Set(),  // ids des ports d'entrée cochés
+  inputs: [],
+  enabledInputs: new Set(),
   velocityMode: 'raw',
-  activeNotes: new Map()  // notes actuellement jouées (pour le release)
+  outputMode: 'synth',  // 'synth' | 'thru' | 'both'
+  activeNotes: new Map()
 };
+
+// Renvoyer une note au piano (sur le canal 1 pour que le piano joue)
+function midiThruSendNoteOn(note, velocity){
+  if (!led.midiAccess) return;
+  led.enabledOutputs.forEach(id => {
+    const out = led.midiOutputs.find(o => o.id === id);
+    if (out) {
+      // Canal 1 (= 0 en hex) pour que le piano fasse du son
+      try { out.send([0x90, note, velocity]); } catch(e){}
+    }
+  });
+}
+
+function midiThruSendNoteOff(note){
+  if (!led.midiAccess) return;
+  led.enabledOutputs.forEach(id => {
+    const out = led.midiOutputs.find(o => o.id === id);
+    if (out) {
+      try { out.send([0x80, note, 0]); } catch(e){}
+    }
+  });
+}
 
 function refreshMIDIInputs(){
   if (!led.midiAccess) return;
@@ -3606,7 +3636,7 @@ function handleMIDIInput(event){
   if (!midiIn.enabled) return;
 
   const data = event.data;
-  const status = data[0] & 0xF0;  // 0x90 = note on, 0x80 = note off
+  const status = data[0] & 0xF0;
   const note = data[1];
   let velocity = data[2];
 
@@ -3616,31 +3646,44 @@ function handleMIDIInput(event){
   else if (midiIn.velocityMode === 'fixed-strong') velocity = 120;
   else if (midiIn.velocityMode === 'boost') velocity = Math.min(127, velocity + 30);
 
-  // Convertir velocity 0-127 en gain 0-1 pour Tone.js
   const gain = velocity / 127;
 
   if (status === 0x90 && velocity > 0) {
-    // Note ON
-    initAudio();
-    const noteName = midiNumberToToneName(note);
-    const instrument = getActiveChordInstrument();
-    if (instrument) {
-      try {
-        instrument.triggerAttack(noteName, undefined, gain);
-        midiIn.activeNotes.set(note, noteName);
-      } catch(e) {
-        midiDebugLog(`✗ Erreur jouer note ${noteName}: ${e.message}`, 'error');
+    // ─── Note ON ───
+    // Mode 'synth' ou 'both' : jouer via la banque de sons Sanctus
+    if (midiIn.outputMode === 'synth' || midiIn.outputMode === 'both') {
+      initAudio();
+      const noteName = midiNumberToToneName(note);
+      const instrument = getActiveChordInstrument();
+      if (instrument) {
+        try {
+          instrument.triggerAttack(noteName, undefined, gain);
+          midiIn.activeNotes.set(note, noteName);
+        } catch(e) {
+          midiDebugLog(`✗ Erreur jouer note ${midiNumberToToneName(note)}: ${e.message}`, 'error');
+        }
       }
     }
+    // Mode 'thru' ou 'both' : renvoyer au piano pour qu'il joue le son
+    if (midiIn.outputMode === 'thru' || midiIn.outputMode === 'both') {
+      midiThruSendNoteOn(note, velocity);
+    }
   } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
-    // Note OFF
-    const noteName = midiIn.activeNotes.get(note);
-    if (noteName) {
-      const instrument = getActiveChordInstrument();
-      if (instrument && instrument.triggerRelease) {
-        try { instrument.triggerRelease(noteName); } catch(e){}
+    // ─── Note OFF ───
+    // Côté synthé Sanctus
+    if (midiIn.outputMode === 'synth' || midiIn.outputMode === 'both') {
+      const noteName = midiIn.activeNotes.get(note);
+      if (noteName) {
+        const instrument = getActiveChordInstrument();
+        if (instrument && instrument.triggerRelease) {
+          try { instrument.triggerRelease(noteName); } catch(e){}
+        }
+        midiIn.activeNotes.delete(note);
       }
-      midiIn.activeNotes.delete(note);
+    }
+    // Côté piano
+    if (midiIn.outputMode === 'thru' || midiIn.outputMode === 'both') {
+      midiThruSendNoteOff(note);
     }
   }
 }
@@ -3692,6 +3735,16 @@ document.getElementById('midi-in-toggle').addEventListener('click', midiInToggle
 document.getElementById('midi-in-velocity').addEventListener('change', e => {
   midiIn.velocityMode = e.target.value;
   midiDebugLog(`◉ Vélocité MIDI IN : ${midiIn.velocityMode}`, 'info');
+});
+
+document.getElementById('midi-in-mode').addEventListener('change', e => {
+  midiIn.outputMode = e.target.value;
+  const labels = {
+    'synth': 'Synthé Sanctus',
+    'thru': 'MIDI Thru → piano',
+    'both': 'Synthé + piano'
+  };
+  midiDebugLog(`◉ Mode sortie : ${labels[midiIn.outputMode]}`, 'info');
 });
 
 // Lancer la détection des entrées MIDI après initMIDI
