@@ -1671,8 +1671,6 @@ document.getElementById('piano-toggle').addEventListener('click', () => {
   }
 });
 
-buildPiano();
-
 // Mode veillée
 document.getElementById('vigil-toggle').addEventListener('click', () => {
   document.body.classList.toggle('vigil');
@@ -2609,6 +2607,7 @@ generateChords();
 renderChords();
 renderScrollChords();
 renderRhythm();
+buildPiano();
 setTimeout(() => scrollToCurrentChord(0), 100);
 </script>
 </body>
