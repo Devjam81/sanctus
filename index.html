@@ -2002,48 +2002,47 @@ function createPropheticInstrument(){
   return synth;
 }
 
-// Charge le vrai piano Salamander (samples MP3 via CDN)
+// Charge le vrai piano Salamander (samples MP3 via CDN officiel Tone.js)
 async function loadSalamanderPiano(){
-  if (salamanderLoaded) return soundbankInstrument;
+  if (salamanderLoaded && soundbankInstrument) return soundbankInstrument;
   setSoundbankStatus('Chargement du piano Salamander…', 'loading');
 
   const reverb = new Tone.Reverb({ decay: 4, wet: 0.4 }).toDestination();
 
-  // CDN unpkg avec samples MP3 du Salamander Grand Piano V3 (domaine public)
-  const baseUrl = 'https://unpkg.com/@audio-samples/piano-mp3@1.0.5/audio/';
+  // CDN officiel Tone.js — naming convention : D#1 devient Ds1, F#1 devient Fs1
+  const baseUrl = 'https://tonejs.github.io/audio/salamander/';
 
-  const sampler = new Tone.Sampler({
-    urls: {
-      'A0': '21.mp3', 'C1': '24.mp3', 'D#1': '27.mp3', 'F#1': '30.mp3', 'A1': '33.mp3',
-      'C2': '36.mp3', 'D#2': '39.mp3', 'F#2': '42.mp3', 'A2': '45.mp3',
-      'C3': '48.mp3', 'D#3': '51.mp3', 'F#3': '54.mp3', 'A3': '57.mp3',
-      'C4': '60.mp3', 'D#4': '63.mp3', 'F#4': '66.mp3', 'A4': '69.mp3',
-      'C5': '72.mp3', 'D#5': '75.mp3', 'F#5': '78.mp3', 'A5': '81.mp3',
-      'C6': '84.mp3', 'D#6': '87.mp3', 'F#6': '90.mp3', 'A6': '93.mp3',
-      'C7': '96.mp3', 'D#7': '99.mp3', 'F#7': '102.mp3', 'A7': '105.mp3',
-      'C8': '108.mp3'
-    },
-    baseUrl: baseUrl,
-    release: 1.5,
-    onload: () => {
-      salamanderLoaded = true;
-      setSoundbankStatus('✓ Piano Salamander chargé', 'ok');
-    },
-    onerror: (e) => {
-      console.error('Salamander load error:', e);
-      setSoundbankStatus('✗ Erreur chargement — repli sur synthé', 'error');
-      currentSoundbank = 'default';
-      document.getElementById('soundbank').value = 'default';
-    }
+  return new Promise((resolve, reject) => {
+    const sampler = new Tone.Sampler({
+      urls: {
+        'A0': 'A0.mp3',
+        'C1': 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', 'A1': 'A1.mp3',
+        'C2': 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', 'A2': 'A2.mp3',
+        'C3': 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', 'A3': 'A3.mp3',
+        'C4': 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', 'A4': 'A4.mp3',
+        'C5': 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', 'A5': 'A5.mp3',
+        'C6': 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', 'A6': 'A6.mp3',
+        'C7': 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', 'A7': 'A7.mp3',
+        'C8': 'C8.mp3'
+      },
+      baseUrl: baseUrl,
+      release: 1.5,
+      onload: () => {
+        salamanderLoaded = true;
+        setSoundbankStatus('✓ Piano Salamander chargé', 'ok');
+        resolve(sampler);
+      },
+      onerror: (e) => {
+        console.error('Salamander load error:', e);
+        setSoundbankStatus('✗ Erreur chargement — repli sur synthé', 'error');
+        currentSoundbank = 'default';
+        document.getElementById('soundbank').value = 'default';
+        reject(e);
+      }
+    });
+    sampler.connect(reverb);
+    sampler.volume.value = -6;
   });
-
-  sampler.connect(reverb);
-  sampler.volume.value = -6;
-
-  // Attendre la fin du chargement
-  await Tone.loaded();
-
-  return sampler;
 }
 
 // Active une banque de sons (appelé quand l'utilisateur change le sélecteur)
@@ -2051,12 +2050,11 @@ async function activateSoundbank(name){
   initAudio();
   await Tone.start();
 
-  // Disposer l'ancienne banque
+  // Disposer l'ancienne banque (sauf Salamander qu'on garde en cache)
   if (soundbankInstrument && currentSoundbank !== 'default' && currentSoundbank !== 'salamander') {
     try { soundbankInstrument.dispose(); } catch(e){}
     soundbankInstrument = null;
   }
-  // Pour Salamander, on garde en mémoire (chargement long)
 
   currentSoundbank = name;
 
@@ -2073,7 +2071,12 @@ async function activateSoundbank(name){
     soundbankInstrument = createPropheticInstrument();
     setSoundbankStatus('𓋹 Instrumental prophétique actif', 'ok');
   } else if (name === 'salamander') {
-    soundbankInstrument = await loadSalamanderPiano();
+    try {
+      soundbankInstrument = await loadSalamanderPiano();
+    } catch(e) {
+      // Fallback déjà géré dans loadSalamanderPiano
+      soundbankInstrument = null;
+    }
   }
 }
 
