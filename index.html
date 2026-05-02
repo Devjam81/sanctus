@@ -1514,11 +1514,23 @@
       </div>
       <div class="control-group"><label>Banque de sons</label>
         <select id="soundbank">
-          <option value="default" selected>Synthé classique</option>
-          <option value="crystal">✦ Piano cristallin (Bethel)</option>
-          <option value="choir">⟡ Chœur angélique</option>
-          <option value="prophetic_inst">𓋹 Instrumental prophétique</option>
-          <option value="salamander">🎹 Vrai piano Salamander (chargement ~10 Mo)</option>
+          <optgroup label="Synthés (instantanés)">
+            <option value="default" selected>Synthé classique</option>
+            <option value="crystal">✦ Piano cristallin (Bethel)</option>
+            <option value="choir">⟡ Chœur angélique synthétique</option>
+            <option value="prophetic_inst">𓋹 Instrumental prophétique</option>
+          </optgroup>
+          <optgroup label="Vrais samples (chargement ~5-15 Mo)">
+            <option value="salamander">🎹 Yamaha C5 Grand Piano (Salamander)</option>
+            <option value="violin">🎻 Violon orchestral</option>
+            <option value="cello">🎻 Violoncelle profond</option>
+            <option value="harp_real">𓋹 Harpe celtique</option>
+            <option value="organ_real">⛪ Orgue d'église</option>
+            <option value="harmonium">🎵 Harmonium ancien</option>
+            <option value="flute">🌬️ Flûte traversière</option>
+            <option value="ensemble_strings">🎻 Ensemble cordes (cello + violin)</option>
+            <option value="ensemble_worship">✨ Ensemble louange (piano + cello + harpe)</option>
+          </optgroup>
         </select>
       </div>
       <div class="control-group"><label>Volume <span id="volume-display" style="float: right; color: var(--gold-bright); font-family: 'JetBrains Mono', monospace;">75%</span></label>
@@ -2488,6 +2500,206 @@ function setSoundbankStatus(text, level = 'info'){
   el.style.color = color;
 }
 
+// Cache des samplers chargés (pour ne pas recharger)
+const samplerCache = {};
+
+// CDN des samples instruments — repo nbrosowsky/tonejs-instruments via jsDelivr
+const SAMPLES_CDN = 'https://nbrosowsky.github.io/tonejs-instruments/samples/';
+
+// Configurations des instruments samplés disponibles
+// Chaque config définit les notes échantillonnées et l'enveloppe sonore
+const SAMPLE_CONFIGS = {
+  violin: {
+    name: 'Violon orchestral',
+    folder: 'violin/',
+    urls: {
+      'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3',
+      'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3',
+      'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3',
+      'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G6': 'G6.mp3'
+    },
+    release: 1.5,
+    volume: -8,
+    reverbDecay: 4
+  },
+  cello: {
+    name: 'Violoncelle profond',
+    folder: 'cello/',
+    urls: {
+      'E2': 'E2.mp3', 'E3': 'E3.mp3', 'E4': 'E4.mp3',
+      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3',
+      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3'
+    },
+    release: 2,
+    volume: -6,
+    reverbDecay: 5
+  },
+  harp_real: {
+    name: 'Harpe celtique',
+    folder: 'harp/',
+    urls: {
+      'A2': 'A2.mp3', 'A4': 'A4.mp3', 'A6': 'A6.mp3',
+      'C3': 'C3.mp3', 'C5': 'C5.mp3', 'C7': 'C7.mp3',
+      'E3': 'E3.mp3', 'E5': 'E5.mp3', 'E7': 'E7.mp3',
+      'G3': 'G3.mp3', 'G5': 'G5.mp3'
+    },
+    release: 4,
+    volume: -8,
+    reverbDecay: 6
+  },
+  organ_real: {
+    name: 'Orgue d\'église',
+    folder: 'organ/',
+    urls: {
+      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3',
+      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3',
+      'F#2': 'Fs2.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3',
+      'D#2': 'Ds2.mp3', 'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3', 'D#5': 'Ds5.mp3'
+    },
+    release: 1,
+    volume: -10,
+    reverbDecay: 8
+  },
+  harmonium: {
+    name: 'Harmonium ancien',
+    folder: 'harmonium/',
+    urls: {
+      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3',
+      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3',
+      'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3', 'D#5': 'Ds5.mp3',
+      'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3'
+    },
+    release: 1.5,
+    volume: -10,
+    reverbDecay: 4
+  },
+  flute: {
+    name: 'Flûte traversière',
+    folder: 'flute/',
+    urls: {
+      'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3',
+      'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3',
+      'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3'
+    },
+    release: 1,
+    volume: -8,
+    reverbDecay: 5
+  }
+};
+
+// Charge un instrument samplé depuis le CDN avec son effet de réverbération
+async function loadSampledInstrument(key){
+  if (samplerCache[key]) {
+    return samplerCache[key];
+  }
+  const config = SAMPLE_CONFIGS[key];
+  if (!config) return null;
+
+  setSoundbankStatus(`Chargement ${config.name}…`, 'loading');
+
+  return new Promise((resolve, reject) => {
+    const reverb = new Tone.Reverb({ decay: config.reverbDecay, wet: 0.4 }).toDestination();
+
+    const sampler = new Tone.Sampler({
+      urls: config.urls,
+      baseUrl: SAMPLES_CDN + config.folder,
+      release: config.release,
+      onload: () => {
+        sampler.connect(reverb);
+        sampler.volume.value = config.volume;
+        samplerCache[key] = sampler;
+        setSoundbankStatus(`✓ ${config.name} chargé`, 'ok');
+        resolve(sampler);
+      },
+      onerror: (e) => {
+        console.error(`Erreur chargement ${key}:`, e);
+        setSoundbankStatus(`✗ Erreur — repli sur synthé`, 'error');
+        currentSoundbank = 'default';
+        document.getElementById('soundbank').value = 'default';
+        reject(e);
+      }
+    });
+  });
+}
+
+// Crée un ensemble = plusieurs instruments combinés (joués ensemble)
+async function loadEnsemble(name){
+  if (samplerCache[name]) return samplerCache[name];
+
+  setSoundbankStatus(`Chargement ensemble ${name}…`, 'loading');
+
+  let instruments = [];
+
+  if (name === 'ensemble_strings') {
+    // Ensemble cordes : violon + violoncelle
+    try {
+      const violin = await loadSampledInstrument('violin');
+      const cello = await loadSampledInstrument('cello');
+      instruments = [{ inst: violin, octShift: 0, gain: 1 }, { inst: cello, octShift: -1, gain: 0.8 }];
+    } catch(e) { return null; }
+  } else if (name === 'ensemble_worship') {
+    // Ensemble louange : piano + cello + harpe
+    try {
+      const piano = await loadSalamanderPiano();
+      const cello = await loadSampledInstrument('cello');
+      const harp = await loadSampledInstrument('harp_real');
+      instruments = [
+        { inst: piano, octShift: 0, gain: 1 },
+        { inst: cello, octShift: -1, gain: 0.6 },
+        { inst: harp, octShift: 0, gain: 0.5 }
+      ];
+    } catch(e) { return null; }
+  }
+
+  if (instruments.length === 0) return null;
+
+  // Créer un proxy qui appelle triggerAttackRelease sur tous les instruments
+  const proxy = {
+    isEnsemble: true,
+    instruments: instruments,
+    triggerAttackRelease: function(notes, duration, time, velocity = 1.0){
+      this.instruments.forEach(({ inst, octShift, gain }) => {
+        if (!inst || !inst.triggerAttackRelease) return;
+        // Décaler les notes selon octShift
+        const shiftedNotes = Array.isArray(notes)
+          ? notes.map(n => shiftOctave(n, octShift))
+          : shiftOctave(notes, octShift);
+        try {
+          inst.triggerAttackRelease(shiftedNotes, duration, time, velocity * gain);
+        } catch(e){}
+      });
+    },
+    triggerAttack: function(note, time, velocity = 1.0){
+      this.instruments.forEach(({ inst, octShift, gain }) => {
+        if (!inst || !inst.triggerAttack) return;
+        const shifted = shiftOctave(note, octShift);
+        try { inst.triggerAttack(shifted, time, velocity * gain); } catch(e){}
+      });
+    },
+    triggerRelease: function(note, time){
+      this.instruments.forEach(({ inst, octShift }) => {
+        if (!inst || !inst.triggerRelease) return;
+        const shifted = shiftOctave(note, octShift);
+        try { inst.triggerRelease(shifted, time); } catch(e){}
+      });
+    }
+  };
+
+  samplerCache[name] = proxy;
+  setSoundbankStatus(`✓ Ensemble ${name} chargé`, 'ok');
+  return proxy;
+}
+
+// Décale une note d'un nombre d'octaves (pour les ensembles)
+function shiftOctave(noteName, shift){
+  if (shift === 0) return noteName;
+  const match = noteName.match(/^([A-G][#b]?)(\d+)$/);
+  if (!match) return noteName;
+  const newOct = parseInt(match[2]) + shift;
+  if (newOct < 0 || newOct > 8) return noteName;
+  return match[1] + newOct;
+}
+
 function initAudio(){
   if (piano) return;
   const reverb = new Tone.Reverb({ decay: 5, wet: 0.45 }).toDestination();
@@ -2744,8 +2956,9 @@ async function activateSoundbank(name){
   initAudio();
   await Tone.start();
 
-  // Disposer l'ancienne banque (sauf Salamander qu'on garde en cache)
-  if (soundbankInstrument && currentSoundbank !== 'default' && currentSoundbank !== 'salamander') {
+  // Disposer l'ancienne banque (sauf samples qu'on garde en cache)
+  const sampledBanks = ['salamander', 'violin', 'cello', 'harp_real', 'organ_real', 'harmonium', 'flute', 'ensemble_strings', 'ensemble_worship'];
+  if (soundbankInstrument && !sampledBanks.includes(currentSoundbank) && currentSoundbank !== 'default') {
     try { soundbankInstrument.dispose(); } catch(e){}
     soundbankInstrument = null;
   }
@@ -2768,7 +2981,18 @@ async function activateSoundbank(name){
     try {
       soundbankInstrument = await loadSalamanderPiano();
     } catch(e) {
-      // Fallback déjà géré dans loadSalamanderPiano
+      soundbankInstrument = null;
+    }
+  } else if (['violin', 'cello', 'harp_real', 'organ_real', 'harmonium', 'flute'].includes(name)) {
+    try {
+      soundbankInstrument = await loadSampledInstrument(name);
+    } catch(e) {
+      soundbankInstrument = null;
+    }
+  } else if (name === 'ensemble_strings' || name === 'ensemble_worship') {
+    try {
+      soundbankInstrument = await loadEnsemble(name);
+    } catch(e) {
       soundbankInstrument = null;
     }
   }
