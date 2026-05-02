@@ -2555,9 +2555,7 @@ const SAMPLE_CONFIGS = {
       'G4': 'G3.mp3',
       'A5': 'A4.mp3',
       'C6': 'C5.mp3',
-      'E6': 'E5.mp3',
-      'A7': 'A6.mp3',
-      'C8': 'C7.mp3'
+      'E6': 'E5.mp3'
     },
     release: 4,
     volume: -8,
@@ -2597,12 +2595,12 @@ const SAMPLE_CONFIGS = {
     name: 'Flûte traversière',
     folder: 'flute/',
     urls: {
+      'A4': 'A3.mp3',
+      'C5': 'C4.mp3',
+      'E5': 'E4.mp3',
       'A5': 'A4.mp3',
       'C6': 'C5.mp3',
-      'E6': 'E5.mp3',
-      'A6': 'A5.mp3',
-      'C7': 'C6.mp3',
-      'E7': 'E6.mp3'
+      'E6': 'E5.mp3'
     },
     release: 1,
     volume: -8,
@@ -2625,12 +2623,15 @@ async function loadSampledInstrument(key){
 
   return new Promise((resolve, reject) => {
     let resolved = false;
-    // Timeout de sécurité — si rien ne charge après 30s, on bascule sur synthé
+    let errorCount = 0;
+    const totalUrls = Object.keys(config.urls).length;
+    const maxErrors = Math.floor(totalUrls / 2); // tolère jusqu'à 50% d'échecs
+
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         console.warn(`Timeout chargement ${key}`);
-        setSoundbankStatus(`✗ Chargement trop long — repli synthé`, 'error');
+        setSoundbankStatus(`✗ Chargement trop long`, 'error');
         reject(new Error('Timeout'));
       }
     }, 30000);
@@ -2654,10 +2655,15 @@ async function loadSampledInstrument(key){
           resolve(sampler);
         },
         onerror: (e) => {
-          if (resolved) return;
-          console.error(`Erreur chargement ${key}:`, e);
-          // Ne pas rejeter immédiatement — un fichier individuel peut échouer
-          // mais Tone.Sampler peut quand même fonctionner avec les autres
+          errorCount++;
+          console.warn(`Sample manquant pour ${key} (${errorCount}/${totalUrls}):`, e.message || e);
+          if (errorCount > maxErrors && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            console.error(`Trop d'échecs pour ${key} (${errorCount}/${totalUrls})`);
+            setSoundbankStatus(`✗ ${config.name} introuvable`, 'error');
+            reject(new Error('Trop d\'échecs'));
+          }
         }
       });
     } catch(e) {
@@ -3969,6 +3975,23 @@ function refreshMIDIInputs(){
 }
 
 function renderMIDIInputsList(){
+  // Restaurer la sélection précédente AVANT de rendre (une seule fois au démarrage)
+  if (!midiIn._sessionRestored && midiIn.enabledInputs.size === 0 && midiIn.inputs.length > 0) {
+    midiIn._sessionRestored = true;
+    const saved = localStorage.getItem('sanctus-midi-in-ports');
+    if (saved) {
+      try {
+        JSON.parse(saved).forEach(id => {
+          const inp = midiIn.inputs.find(i => i.id === id);
+          if (inp) {
+            midiIn.enabledInputs.add(id);
+            attachMIDIInputListener(inp);
+          }
+        });
+      } catch(e) {}
+    }
+  }
+
   const list = document.getElementById('midi-in-ports-list');
   if (midiIn.inputs.length === 0) {
     list.innerHTML = '<span style="color: var(--soft); font-style: italic; font-family: \'Cormorant Garamond\', serif;">Aucune entrée MIDI détectée — branche ton piano</span>';
@@ -4015,21 +4038,6 @@ function renderMIDIInputsList(){
 
     list.appendChild(label);
   });
-
-  // Restaurer la sélection précédente
-  if (midiIn.enabledInputs.size === 0 && midiIn.inputs.length > 0) {
-    const saved = localStorage.getItem('sanctus-midi-in-ports');
-    if (saved) {
-      JSON.parse(saved).forEach(id => {
-        const inp = midiIn.inputs.find(i => i.id === id);
-        if (inp) {
-          midiIn.enabledInputs.add(id);
-          attachMIDIInputListener(inp);
-        }
-      });
-      renderMIDIInputsList();
-    }
-  }
 }
 
 function saveMIDIInputSelection(){
