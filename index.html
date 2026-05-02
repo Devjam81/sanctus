@@ -2507,16 +2507,23 @@ const samplerCache = {};
 const SAMPLES_CDN = 'https://nbrosowsky.github.io/tonejs-instruments/samples/';
 
 // Configurations des instruments samplés disponibles
-// Chaque config définit les notes échantillonnées et l'enveloppe sonore
+// Note IMPORTANT : les fichiers du repo nbrosowsky sont labellisés UNE OCTAVE TROP BAS
+// (bug connu : https://github.com/nbrosowsky/tonejs-instruments/issues/16)
+// Donc le fichier "A3.mp3" est en réalité un A4. Les configs ci-dessous compensent.
 const SAMPLE_CONFIGS = {
   violin: {
     name: 'Violon orchestral',
     folder: 'violin/',
     urls: {
-      'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3',
-      'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3',
-      'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3',
-      'G4': 'G4.mp3', 'G5': 'G5.mp3', 'G6': 'G6.mp3'
+      // Tone.js note : fichier (qui sonne en réalité 1 octave plus haut)
+      'A4': 'A3.mp3',
+      'C5': 'C4.mp3',
+      'E5': 'E4.mp3',
+      'G5': 'G4.mp3',
+      'A5': 'A4.mp3',
+      'C6': 'C5.mp3',
+      'E6': 'E5.mp3',
+      'A6': 'A5.mp3'
     },
     release: 1.5,
     volume: -8,
@@ -2526,9 +2533,13 @@ const SAMPLE_CONFIGS = {
     name: 'Violoncelle profond',
     folder: 'cello/',
     urls: {
-      'E2': 'E2.mp3', 'E3': 'E3.mp3', 'E4': 'E4.mp3',
-      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3',
-      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3'
+      'E3': 'E2.mp3',
+      'A3': 'A2.mp3',
+      'C4': 'C3.mp3',
+      'E4': 'E3.mp3',
+      'A4': 'A3.mp3',
+      'C5': 'C4.mp3',
+      'E5': 'E4.mp3'
     },
     release: 2,
     volume: -6,
@@ -2538,10 +2549,15 @@ const SAMPLE_CONFIGS = {
     name: 'Harpe celtique',
     folder: 'harp/',
     urls: {
-      'A2': 'A2.mp3', 'A4': 'A4.mp3', 'A6': 'A6.mp3',
-      'C3': 'C3.mp3', 'C5': 'C5.mp3', 'C7': 'C7.mp3',
-      'E3': 'E3.mp3', 'E5': 'E5.mp3', 'E7': 'E7.mp3',
-      'G3': 'G3.mp3', 'G5': 'G5.mp3'
+      'A3': 'A2.mp3',
+      'C4': 'C3.mp3',
+      'E4': 'E3.mp3',
+      'G4': 'G3.mp3',
+      'A5': 'A4.mp3',
+      'C6': 'C5.mp3',
+      'E6': 'E5.mp3',
+      'A7': 'A6.mp3',
+      'C8': 'C7.mp3'
     },
     release: 4,
     volume: -8,
@@ -2551,10 +2567,12 @@ const SAMPLE_CONFIGS = {
     name: 'Orgue d\'église',
     folder: 'organ/',
     urls: {
-      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3',
-      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3',
-      'F#2': 'Fs2.mp3', 'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3',
-      'D#2': 'Ds2.mp3', 'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3', 'D#5': 'Ds5.mp3'
+      'C4': 'C3.mp3',
+      'A4': 'A3.mp3',
+      'C5': 'C4.mp3',
+      'A5': 'A4.mp3',
+      'C6': 'C5.mp3',
+      'A6': 'A5.mp3'
     },
     release: 1,
     volume: -10,
@@ -2564,10 +2582,12 @@ const SAMPLE_CONFIGS = {
     name: 'Harmonium ancien',
     folder: 'harmonium/',
     urls: {
-      'A2': 'A2.mp3', 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3',
-      'C3': 'C3.mp3', 'C4': 'C4.mp3', 'C5': 'C5.mp3',
-      'D#3': 'Ds3.mp3', 'D#4': 'Ds4.mp3', 'D#5': 'Ds5.mp3',
-      'F#3': 'Fs3.mp3', 'F#4': 'Fs4.mp3', 'F#5': 'Fs5.mp3'
+      'A3': 'A2.mp3',
+      'C4': 'C3.mp3',
+      'A4': 'A3.mp3',
+      'C5': 'C4.mp3',
+      'A5': 'A4.mp3',
+      'C6': 'C5.mp3'
     },
     release: 1.5,
     volume: -10,
@@ -2577,9 +2597,12 @@ const SAMPLE_CONFIGS = {
     name: 'Flûte traversière',
     folder: 'flute/',
     urls: {
-      'A4': 'A4.mp3', 'A5': 'A5.mp3', 'A6': 'A6.mp3',
-      'C4': 'C4.mp3', 'C5': 'C5.mp3', 'C6': 'C6.mp3', 'C7': 'C7.mp3',
-      'E4': 'E4.mp3', 'E5': 'E5.mp3', 'E6': 'E6.mp3'
+      'A5': 'A4.mp3',
+      'C6': 'C5.mp3',
+      'E6': 'E5.mp3',
+      'A6': 'A5.mp3',
+      'C7': 'C6.mp3',
+      'E7': 'E6.mp3'
     },
     release: 1,
     volume: -8,
@@ -2593,32 +2616,57 @@ async function loadSampledInstrument(key){
     return samplerCache[key];
   }
   const config = SAMPLE_CONFIGS[key];
-  if (!config) return null;
+  if (!config) {
+    console.error(`Pas de config pour ${key}`);
+    return null;
+  }
 
   setSoundbankStatus(`Chargement ${config.name}…`, 'loading');
 
   return new Promise((resolve, reject) => {
-    const reverb = new Tone.Reverb({ decay: config.reverbDecay, wet: 0.4 }).toDestination();
-
-    const sampler = new Tone.Sampler({
-      urls: config.urls,
-      baseUrl: SAMPLES_CDN + config.folder,
-      release: config.release,
-      onload: () => {
-        sampler.connect(reverb);
-        sampler.volume.value = config.volume;
-        samplerCache[key] = sampler;
-        setSoundbankStatus(`✓ ${config.name} chargé`, 'ok');
-        resolve(sampler);
-      },
-      onerror: (e) => {
-        console.error(`Erreur chargement ${key}:`, e);
-        setSoundbankStatus(`✗ Erreur — repli sur synthé`, 'error');
-        currentSoundbank = 'default';
-        document.getElementById('soundbank').value = 'default';
-        reject(e);
+    let resolved = false;
+    // Timeout de sécurité — si rien ne charge après 30s, on bascule sur synthé
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn(`Timeout chargement ${key}`);
+        setSoundbankStatus(`✗ Chargement trop long — repli synthé`, 'error');
+        reject(new Error('Timeout'));
       }
-    });
+    }, 30000);
+
+    try {
+      const reverb = new Tone.Reverb({ decay: config.reverbDecay, wet: 0.4 }).toDestination();
+
+      const sampler = new Tone.Sampler({
+        urls: config.urls,
+        baseUrl: SAMPLES_CDN + config.folder,
+        release: config.release,
+        onload: () => {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timeout);
+          sampler.connect(reverb);
+          sampler.volume.value = config.volume;
+          samplerCache[key] = sampler;
+          setSoundbankStatus(`✓ ${config.name} chargé`, 'ok');
+          console.log(`✓ Sampler chargé : ${key}`);
+          resolve(sampler);
+        },
+        onerror: (e) => {
+          if (resolved) return;
+          console.error(`Erreur chargement ${key}:`, e);
+          // Ne pas rejeter immédiatement — un fichier individuel peut échouer
+          // mais Tone.Sampler peut quand même fonctionner avec les autres
+        }
+      });
+    } catch(e) {
+      resolved = true;
+      clearTimeout(timeout);
+      console.error(`Erreur création sampler ${key}:`, e);
+      setSoundbankStatus(`✗ Erreur — repli synthé`, 'error');
+      reject(e);
+    }
   });
 }
 
@@ -2631,27 +2679,39 @@ async function loadEnsemble(name){
   let instruments = [];
 
   if (name === 'ensemble_strings') {
-    // Ensemble cordes : violon + violoncelle
-    try {
-      const violin = await loadSampledInstrument('violin');
-      const cello = await loadSampledInstrument('cello');
-      instruments = [{ inst: violin, octShift: 0, gain: 1 }, { inst: cello, octShift: -1, gain: 0.8 }];
-    } catch(e) { return null; }
+    // Charge violon + cello en parallèle, garde ce qui marche
+    const results = await Promise.allSettled([
+      loadSampledInstrument('violin'),
+      loadSampledInstrument('cello')
+    ]);
+    if (results[0].status === 'fulfilled' && results[0].value) {
+      instruments.push({ inst: results[0].value, octShift: 0, gain: 1 });
+    }
+    if (results[1].status === 'fulfilled' && results[1].value) {
+      instruments.push({ inst: results[1].value, octShift: -1, gain: 0.8 });
+    }
   } else if (name === 'ensemble_worship') {
-    // Ensemble louange : piano + cello + harpe
-    try {
-      const piano = await loadSalamanderPiano();
-      const cello = await loadSampledInstrument('cello');
-      const harp = await loadSampledInstrument('harp_real');
-      instruments = [
-        { inst: piano, octShift: 0, gain: 1 },
-        { inst: cello, octShift: -1, gain: 0.6 },
-        { inst: harp, octShift: 0, gain: 0.5 }
-      ];
-    } catch(e) { return null; }
+    // Charge piano + cello + harpe en parallèle
+    const results = await Promise.allSettled([
+      loadSalamanderPiano(),
+      loadSampledInstrument('cello'),
+      loadSampledInstrument('harp_real')
+    ]);
+    if (results[0].status === 'fulfilled' && results[0].value) {
+      instruments.push({ inst: results[0].value, octShift: 0, gain: 1 });
+    }
+    if (results[1].status === 'fulfilled' && results[1].value) {
+      instruments.push({ inst: results[1].value, octShift: -1, gain: 0.6 });
+    }
+    if (results[2].status === 'fulfilled' && results[2].value) {
+      instruments.push({ inst: results[2].value, octShift: 0, gain: 0.5 });
+    }
   }
 
-  if (instruments.length === 0) return null;
+  if (instruments.length === 0) {
+    setSoundbankStatus(`✗ Aucun instrument chargé — repli synthé`, 'error');
+    return null;
+  }
 
   // Créer un proxy qui appelle triggerAttackRelease sur tous les instruments
   const proxy = {
@@ -2660,7 +2720,6 @@ async function loadEnsemble(name){
     triggerAttackRelease: function(notes, duration, time, velocity = 1.0){
       this.instruments.forEach(({ inst, octShift, gain }) => {
         if (!inst || !inst.triggerAttackRelease) return;
-        // Décaler les notes selon octShift
         const shiftedNotes = Array.isArray(notes)
           ? notes.map(n => shiftOctave(n, octShift))
           : shiftOctave(notes, octShift);
@@ -2686,7 +2745,7 @@ async function loadEnsemble(name){
   };
 
   samplerCache[name] = proxy;
-  setSoundbankStatus(`✓ Ensemble ${name} chargé`, 'ok');
+  setSoundbankStatus(`✓ Ensemble ${name} chargé (${instruments.length} instruments)`, 'ok');
   return proxy;
 }
 
