@@ -4974,9 +4974,7 @@ function shuffleProgression(){
   const progs = PROGRESSIONS[state.mode];
   if (!progs) return;
   const names = Object.keys(progs);
-  // Garder la progression actuelle si une seule existe
   if (names.length < 2) return;
-  // Choisir une nouvelle progression différente de la courante
   let newName;
   let attempts = 0;
   do {
@@ -4985,14 +4983,16 @@ function shuffleProgression(){
   } while (newName === state.progName && attempts < 10);
 
   state.progName = newName;
-  state.progression = progs[newName].split('-');
-  // Régénérer les accords avec la nouvelle progression
+  // generateChords() lit directement PROGRESSIONS[state.mode][state.progName]
   generateChords();
   renderChords();
   renderScrollChords();
   // Synchroniser le sélecteur UI
   const sel = document.getElementById('progression');
   if (sel) sel.value = newName;
+  // Mettre à jour le nom affiché
+  const progNameEl = document.getElementById('prog-name');
+  if (progNameEl) progNameEl.textContent = newName.replace(/-/g, ' – ');
   console.log(`✦ Progression shuffle : ${newName}`);
 }
 
@@ -5008,19 +5008,44 @@ function getDynamicMultiplier(){
 
 // 4. ─── MODULATION DE TONALITÉ ─── //
 const MODULATION_INTERVALS = [5, 7, 2, 9, 3, 10]; // 4te, 5te, 2nde, 6te, etc.
+// Map dièses → bémols pour le sélecteur (qui n'a que C, G, D, A, E, B, F, Bb, Eb, Ab)
+const ENHARMONIC_FLAT = {
+  'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb',
+  'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'A': 'A', 'B': 'B'
+};
+const FLAT_TO_SHARP = {
+  'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+};
+
 function modulateKey(){
-  const currentIdx = NOTES.indexOf(state.key);
-  if (currentIdx === -1) return;
+  // Convertir state.key (Bb, Eb...) en notation NOTES (A#, D#...)
+  const currentSharp = FLAT_TO_SHARP[state.key] || state.key;
+  const currentIdx = NOTES.indexOf(currentSharp);
+  if (currentIdx === -1) {
+    console.warn(`Modulation : tonalité ${state.key} introuvable dans NOTES`);
+    return;
+  }
   const interval = MODULATION_INTERVALS[Math.floor(Math.random() * MODULATION_INTERVALS.length)];
-  const newKey = NOTES[(currentIdx + interval) % 12];
-  state.key = newKey;
-  // Régénérer les accords dans la nouvelle tonalité
+  const newKeySharp = NOTES[(currentIdx + interval) % 12];
+  // Convertir en bémol pour le sélecteur (qui ne connaît que les bémols)
+  const newKeyForSelect = ENHARMONIC_FLAT[newKeySharp] || newKeySharp;
+
+  // Vérifier que la tonalité existe dans le sélecteur (sinon prendre la plus proche)
+  const sel = document.getElementById('key');
+  const availableKeys = Array.from(sel.options).map(o => o.value);
+  let finalKey = newKeyForSelect;
+  if (!availableKeys.includes(finalKey)) {
+    // Repli : trouver la plus proche dans le cercle des quintes
+    const fallbacks = ['C', 'G', 'D', 'A', 'E', 'F', 'Bb', 'Eb', 'Ab', 'B'];
+    finalKey = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  }
+
+  state.key = finalKey;
   generateChords();
   renderChords();
   renderScrollChords();
-  const sel = document.getElementById('key');
-  if (sel) sel.value = newKey;
-  console.log(`✦ Modulation : ${newKey} ${state.mode}`);
+  sel.value = finalKey;
+  console.log(`✦ Modulation : ${finalKey} ${state.mode}`);
 }
 
 // 5. ─── SECTIONS MUSICALES ─── //
