@@ -1590,6 +1590,87 @@
           </select>
         </div>
       </div>
+      <div style="margin-top: 1.25rem; padding: 0.85rem 1rem; background: rgba(15, 10, 6, 0.5); border: 1px solid rgba(244, 196, 48, 0.2); border-radius: 4px;">
+        <div style="font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.2em; color: var(--gold-bright); text-transform: uppercase; margin-bottom: 0.85rem; text-align: center;">
+          🎼 Musicien vivant
+        </div>
+        <div class="controls" style="margin-bottom: 0; gap: 0.85rem;">
+          <div class="control-group"><label>Octaves aléatoires aigus</label>
+            <select id="prophetic-octave-jump">
+              <option value="off">Désactivé</option>
+              <option value="on" selected>Activé</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Progression aléatoire</label>
+            <select id="prophetic-progression-shuffle">
+              <option value="off">Désactivée</option>
+              <option value="every8" selected>Toutes les 8 mesures</option>
+              <option value="every16">Toutes les 16 mesures</option>
+              <option value="every32">Toutes les 32 mesures (lent)</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Évolutions dynamiques</label>
+            <select id="prophetic-dynamic">
+              <option value="off">Volume constant</option>
+              <option value="subtle" selected>Vagues subtiles</option>
+              <option value="strong">Vagues marquées</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Modulation de tonalité</label>
+            <select id="prophetic-modulation">
+              <option value="off" selected>Aucune</option>
+              <option value="rare">Rare (toutes les 32 mesures)</option>
+              <option value="frequent">Fréquente (toutes les 16 mesures)</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Sections musicales</label>
+            <select id="prophetic-sections">
+              <option value="off" selected>Désactivées</option>
+              <option value="on">Couplet → Refrain → Pont</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Drone tonique</label>
+            <select id="prophetic-drone">
+              <option value="off" selected>Désactivé</option>
+              <option value="on">Activé (note pédale)</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Accords étendus</label>
+            <select id="prophetic-extended">
+              <option value="off">Triades simples</option>
+              <option value="subtle" selected>sus2, sus4, add9 (subtil)</option>
+              <option value="rich">+ maj7, m7, slash (riche)</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Échos mélodiques</label>
+            <select id="prophetic-echoes">
+              <option value="off">Désactivés</option>
+              <option value="subtle" selected>Subtils (1 écho)</option>
+              <option value="rich">Riches (3 échos)</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Mutations rythmiques</label>
+            <select id="prophetic-rhythm-mutation">
+              <option value="off" selected>Rythme stable</option>
+              <option value="on">Mute toutes les 8 mesures</option>
+            </select>
+          </div>
+          <div class="control-group"><label>Crescendos auto</label>
+            <select id="prophetic-crescendo">
+              <option value="off" selected>Volume fixe</option>
+              <option value="subtle">Vagues douces</option>
+              <option value="strong">Vagues prophétiques</option>
+            </select>
+          </div>
+          <div class="control-group" style="grid-column: span 2;">
+            <label>🙏 Mode prière continue</label>
+            <select id="prophetic-continuous">
+              <option value="off" selected>Désactivé</option>
+              <option value="on">Activé (sections enchaînées sans fin)</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div style="margin-top: 0.85rem; padding: 0.6rem 0.85rem; background: rgba(15, 10, 6, 0.4); border-left: 2px solid var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.85rem; color: var(--paper); opacity: 0.85; line-height: 1.5;">
         🕊️ Le mode prophétique fait <strong>évoluer le jeu à chaque cycle</strong> — voicings différents, mélodies improvisées aux aigus, notes de passage, arpèges célestes et <strong>orchestration unique à chaque session</strong>.
       </div>
@@ -3390,27 +3471,40 @@ async function startPlayback(){
         const dur = (isSoaking ? 4 : state.barsPerChord) + 'm';
         const durSec = state.barsPerChord * 4 * 60 / state.tempo;
 
+        // ─── ACCORDS ÉTENDUS (mode prophétique) ───
+        const finalChord = prophetic.enabled
+          ? { ...chord, notes: getExtendedChord(chord) }
+          : chord;
+
         // Voicing : standard ou prophétique selon le mode
         const voicing = prophetic.enabled
-          ? getVariedVoicing(chord, 4)
-          : [chord.notes[0] + '3', chord.notes[1] + '4', chord.notes[2] + '4'];
+          ? getVariedVoicing(finalChord, 4)
+          : [finalChord.notes[0] + '3', finalChord.notes[1] + '4', finalChord.notes[2] + '4'];
 
-        instrument.triggerAttackRelease(voicing, state.barsPerChord + 'm', time);
+        // Multiplicateur de volume dynamique (vagues + crescendo)
+        const dynVel = prophetic.enabled
+          ? Math.max(0.3, getDynamicMultiplier() * getCrescendoMultiplier())
+          : 1.0;
+
+        instrument.triggerAttackRelease(voicing, state.barsPerChord + 'm', time, dynVel);
 
         // Toujours jouer la basse (sauf si banque déjà très grave comme prophetic_inst)
         if (currentSoundbank !== 'prophetic_inst') {
-          bassSynth.triggerAttackRelease(bass, state.barsPerChord + 'm', time);
+          bassSynth.triggerAttackRelease(bass, state.barsPerChord + 'm', time, dynVel);
         }
 
         // Mode prophétique : ajouter embellissements et notes de passage
         if (prophetic.enabled) {
-          playOrchestralLayers(chord, time, durSec);
-          generateFlourish(chord, time, durSec, instrument);
-          generateArpeggio(chord, time, durSec, instrument);
+          playOrchestralLayers(finalChord, time, durSec);
+          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          generateArpeggio(finalChord, time, durSec, instrument);
           // Note de passage vers le prochain accord
           const nextIdx = (chordIdx + 1) % state.chords.length;
           const nextChord = state.chords[nextIdx];
-          generatePassingNote(chord, nextChord, time, durSec, instrument);
+          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          // ─── DRONE TONIQUE ─── //
+          if (prophetic.drone && !droneVoice) startDrone();
+          else if (!prophetic.drone && droneVoice) stopDrone();
           // Incrémenter le cycle pour les variations
           prophetic.cycleCount++;
         }
@@ -3437,7 +3531,11 @@ async function startPlayback(){
     }, time);
 
     state.currentStep = (state.currentStep + 1) % stepsPerBar;
-    if (state.currentStep === 0) state.currentBar++;
+    if (state.currentStep === 0) {
+      state.currentBar++;
+      // Mettre à jour le moteur musicien vivant à chaque nouvelle mesure
+      updateMusicianBeat();
+    }
   }, '16n');
 
   loop.start(0);
@@ -3447,7 +3545,15 @@ async function startPlayback(){
   prophetic.cycleCount = 0;
   prophetic.lastVoicingIdx = -1;
   prophetic.lastArpeggioStyle = -1;
-  // ✦ Composer une orchestration unique pour cette session
+  // Reset moteur musicien vivant
+  prophetic.measuresSinceShuffle = 0;
+  prophetic.measuresSinceModulation = 0;
+  prophetic.measuresSinceRhythmMutation = 0;
+  prophetic.dynamicPhase = 0;
+  prophetic.currentSection = 'verse';
+  prophetic.measuresInSection = 0;
+  prophetic.crescendoLevel = 0.7;
+  // Composer une orchestration unique pour cette session
   composeOrchestration();
   // Afficher la composition dans le panneau prophétique
   if (prophetic.enabled && prophetic.composition !== 'off') {
@@ -3488,6 +3594,14 @@ function stopPlayback(){
   if (droneSynth && droneNote) {
     droneSynth.triggerRelease(droneNote);
     droneNote = null;
+  }
+  // Arrêter le drone prophétique
+  stopDrone();
+  // Restaurer le rythme original si mutation active
+  if (prophetic.originalRhythm) {
+    state.rhythm = JSON.parse(JSON.stringify(prophetic.originalRhythm));
+    prophetic.originalRhythm = null;
+    renderRhythm();
   }
   if (padSynth) padSynth.releaseAll();
   if (stringsHi) stringsHi.releaseAll();
@@ -4304,18 +4418,59 @@ const prophetic = {
   passing: 'subtle',
   arpeggio: 0.25,
   arpeggioStyle: 'random',
-  composition: 'light',     // 'off' | 'light' | 'rich' | 'full'
-  // Couches actives pour la session courante (regenérées à chaque play)
+  composition: 'light',
+  // Couches actives
   activeLayers: {
-    pad: false,        // pad doux en fond
-    strings: false,    // ensemble strings
-    subBass: false,    // sub-bass profond
-    harpRoll: false,   // arpège harpe roulé doux
-    harpDrone: false   // drone tonique de harpe
+    pad: false, strings: false, subBass: false,
+    harpRoll: false, harpDrone: false
   },
   cycleCount: 0,
   lastVoicingIdx: -1,
-  lastArpeggioStyle: -1
+  lastArpeggioStyle: -1,
+
+  /* ─── MOTEUR MUSICIEN VIVANT ─── */
+  // 1. Octaves aléatoires aigus
+  octaveJump: true,             // les embellissements sautent d'octaves
+
+  // 2. Progression aléatoire à chaque cycle
+  progressionShuffle: true,     // change la progression toutes les N mesures
+  shuffleEvery: 8,              // mesures avant changement
+  measuresSinceShuffle: 0,
+
+  // 3. Évolutions dynamiques (intensité auto)
+  dynamicWave: true,
+  dynamicPhase: 0,              // 0 → 1 → 0 (cycle de 16 mesures)
+  dynamicCycleBars: 16,
+
+  // 4. Modulations de tonalité
+  modulation: 'off',            // 'off' | 'rare' | 'frequent'
+  measuresSinceModulation: 0,
+
+  // 5. Sections musicales (verse / pre-chorus / chorus / bridge)
+  sections: false,
+  currentSection: 'verse',      // 'verse' | 'preChorus' | 'chorus' | 'bridge'
+  measuresInSection: 0,
+
+  // 6. Drone tonique
+  drone: false,
+  droneVoice: null,             // l'instrument actif pour le drone
+
+  // 7. Accords étendus
+  extendedChords: 'subtle',     // 'off' | 'subtle' | 'rich'
+
+  // 8. Mode prière continue (cycles infinis avec sections)
+  continuousPrayer: false,
+
+  // 9. Échos mélodiques
+  echoes: 'subtle',             // 'off' | 'subtle' | 'rich'
+
+  // 10. Variations rythmiques cycliques
+  rhythmMutation: false,
+  measuresSinceRhythmMutation: 0,
+  originalRhythm: null,         // sauvegarde du rythme original
+
+  // 11. Crescendos automatiques
+  crescendoLevel: 0.7           // niveau d'intensité courant (0-1)
 };
 
 // Génère un voicing différent à chaque appel selon le mode
@@ -4379,39 +4534,75 @@ function generateFlourish(chord, time, durationSec, instrument){
   const scale = getScaleNotes();
   const chordTones = chord.notes;
 
-  // Choisir une octave aiguë (5 ou 6)
-  const oct = Math.random() > 0.5 ? 5 : 6;
+  // ─── OCTAVE JUMP : choisir une octave aiguë aléatoire ─── //
+  const oct = pickRandomOctaveHigh();
 
   // Pattern aléatoire : mélange de notes de l'accord + notes de passage
-  // 3-6 notes sur la durée de l'accord
   const numNotes = 3 + Math.floor(Math.random() * 4);
   const pattern = [];
 
   for (let i = 0; i < numNotes; i++) {
     let note;
     if (Math.random() > 0.4) {
-      // Note de l'accord (probabilité haute)
       note = chordTones[Math.floor(Math.random() * chordTones.length)];
     } else {
-      // Note de passage (note de la gamme)
       note = scale[Math.floor(Math.random() * scale.length)];
     }
-    pattern.push(note + oct);
+    // ─── OCTAVE JUMP par note : 20% des notes peuvent sauter une octave ───
+    let noteOct = oct;
+    if (prophetic.octaveJump && Math.random() < 0.2) {
+      noteOct = Math.random() < 0.5 ? Math.max(4, oct - 1) : Math.min(7, oct + 1);
+    }
+    pattern.push(note + noteOct);
   }
 
   // Timing : étalé sur la durée mais avec un peu de swing
   const noteSpacing = durationSec / numNotes;
   pattern.forEach((noteName, i) => {
-    // Vélocité décroissante avec un pic au milieu
     const peak = Math.min(i, numNotes - i);
     const velocity = 0.3 + (peak / numNotes) * 0.4 + Math.random() * 0.1;
-    // Petit jitter de timing pour humaniser
     const jitter = (Math.random() - 0.5) * 0.03;
     const startTime = time + (i * noteSpacing) + jitter;
     try {
       instrument.triggerAttackRelease(noteName, '8n', startTime, velocity);
     } catch(e){}
   });
+}
+
+// Wrapper qui ajoute les échos après chaque embellissement
+function generateFlourishWithEchoes(chord, time, durationSec, instrument){
+  if (!prophetic.enabled || Math.random() > prophetic.flourish) return;
+  if (!instrument) return;
+
+  const scale = getScaleNotes();
+  const chordTones = chord.notes;
+  const oct = pickRandomOctaveHigh();
+  const numNotes = 3 + Math.floor(Math.random() * 4);
+  const noteSpacing = durationSec / numNotes;
+
+  for (let i = 0; i < numNotes; i++) {
+    let note;
+    if (Math.random() > 0.4) {
+      note = chordTones[Math.floor(Math.random() * chordTones.length)];
+    } else {
+      note = scale[Math.floor(Math.random() * scale.length)];
+    }
+    let noteOct = oct;
+    if (prophetic.octaveJump && Math.random() < 0.2) {
+      noteOct = Math.random() < 0.5 ? Math.max(4, oct - 1) : Math.min(7, oct + 1);
+    }
+    const noteName = note + noteOct;
+    const peak = Math.min(i, numNotes - i);
+    const velocity = 0.3 + (peak / numNotes) * 0.4 + Math.random() * 0.1;
+    const jitter = (Math.random() - 0.5) * 0.03;
+    const startTime = time + (i * noteSpacing) + jitter;
+    // Avec échos si activés
+    if (prophetic.echoes !== 'off') {
+      playWithEchoes(instrument, noteName, startTime, velocity);
+    } else {
+      try { instrument.triggerAttackRelease(noteName, '8n', startTime, velocity); } catch(e){}
+    }
+  }
 }
 
 // Génère une note de passage entre deux accords (durant la dernière mesure)
@@ -4682,6 +4873,263 @@ function playOrchestralLayers(chord, time, durationSec){
   }
 }
 
+/* ============================================================
+   MOTEUR MUSICIEN VIVANT
+   ============================================================ */
+
+// 1. ─── OCTAVE JUMP ALÉATOIRE ─── //
+// Saute aléatoirement entre octaves 4, 5, 6 pour les notes aiguës
+function pickRandomOctaveHigh(){
+  if (!prophetic.octaveJump) return 5;
+  const r = Math.random();
+  if (r < 0.5) return 5;        // 50% : octave 5 (standard aigu)
+  if (r < 0.85) return 6;       // 35% : octave 6 (très aigu)
+  return 4;                      // 15% : octave 4 (médium)
+}
+
+// 2. ─── PROGRESSION SHUFFLE ─── //
+// Génère une nouvelle progression aléatoire dans la même tonalité
+function shuffleProgression(){
+  const progs = PROGRESSIONS[state.mode];
+  if (!progs) return;
+  const names = Object.keys(progs);
+  // Garder la progression actuelle si une seule existe
+  if (names.length < 2) return;
+  // Choisir une nouvelle progression différente de la courante
+  let newName;
+  let attempts = 0;
+  do {
+    newName = names[Math.floor(Math.random() * names.length)];
+    attempts++;
+  } while (newName === state.progName && attempts < 10);
+
+  state.progName = newName;
+  state.progression = progs[newName].split('-');
+  // Régénérer les accords avec la nouvelle progression
+  generateChords();
+  renderChords();
+  renderScrollChords();
+  // Synchroniser le sélecteur UI
+  const sel = document.getElementById('progression');
+  if (sel) sel.value = newName;
+  console.log(`✦ Progression shuffle : ${newName}`);
+}
+
+// 3. ─── DYNAMIC WAVE ─── //
+// Calcule le multiplicateur de volume actuel (0.5 à 1.0) basé sur la phase
+function getDynamicMultiplier(){
+  if (!prophetic.dynamicWave) return 1.0;
+  const amount = prophetic.dynamicAmount || 0.25;
+  // Sinusoide qui oscille entre (1 - amount) et 1
+  const wave = Math.sin(prophetic.dynamicPhase * Math.PI * 2);
+  return 1 - amount + (wave + 1) * amount / 2;
+}
+
+// 4. ─── MODULATION DE TONALITÉ ─── //
+const MODULATION_INTERVALS = [5, 7, 2, 9, 3, 10]; // 4te, 5te, 2nde, 6te, etc.
+function modulateKey(){
+  const currentIdx = NOTES.indexOf(state.key);
+  if (currentIdx === -1) return;
+  const interval = MODULATION_INTERVALS[Math.floor(Math.random() * MODULATION_INTERVALS.length)];
+  const newKey = NOTES[(currentIdx + interval) % 12];
+  state.key = newKey;
+  // Régénérer les accords dans la nouvelle tonalité
+  generateChords();
+  renderChords();
+  renderScrollChords();
+  const sel = document.getElementById('key');
+  if (sel) sel.value = newKey;
+  console.log(`✦ Modulation : ${newKey} ${state.mode}`);
+}
+
+// 5. ─── SECTIONS MUSICALES ─── //
+// Gère le passage entre sections (verse → preChorus → chorus → bridge → verse...)
+function advanceSection(){
+  if (!prophetic.sections) return;
+  const order = ['verse', 'preChorus', 'chorus', 'bridge'];
+  // Durées en mesures de chaque section
+  const lengths = { verse: 8, preChorus: 4, chorus: 8, bridge: 8 };
+  const cur = lengths[prophetic.currentSection];
+  prophetic.measuresInSection++;
+  if (prophetic.measuresInSection >= cur) {
+    const idx = order.indexOf(prophetic.currentSection);
+    prophetic.currentSection = order[(idx + 1) % order.length];
+    prophetic.measuresInSection = 0;
+    // Recomposition automatique selon la section
+    applySectionMood();
+    console.log(`✦ Section : ${prophetic.currentSection}`);
+  }
+}
+
+// Adapte les paramètres selon la section musicale
+function applySectionMood(){
+  const section = prophetic.currentSection;
+  if (section === 'verse') {
+    // Calme, intime, peu de fioritures
+    prophetic.crescendoLevel = 0.5;
+    prophetic.activeLayers.pad = true;
+    prophetic.activeLayers.strings = false;
+    prophetic.activeLayers.subBass = false;
+  } else if (section === 'preChorus') {
+    // Montée, tension qui s'installe
+    prophetic.crescendoLevel = 0.7;
+    prophetic.activeLayers.strings = true;
+  } else if (section === 'chorus') {
+    // Plein, ouvert, puissant
+    prophetic.crescendoLevel = 1.0;
+    prophetic.activeLayers.pad = true;
+    prophetic.activeLayers.strings = true;
+    prophetic.activeLayers.subBass = true;
+    prophetic.activeLayers.harpRoll = true;
+  } else if (section === 'bridge') {
+    // Différent, mystérieux
+    prophetic.crescendoLevel = 0.6;
+    prophetic.activeLayers.harpDrone = true;
+    prophetic.activeLayers.strings = false;
+    prophetic.activeLayers.harpRoll = true;
+  }
+}
+
+// 6. ─── DRONE TONIQUE ─── //
+let droneVoice = null;
+function startDrone(){
+  if (!prophetic.drone || !prophetic.enabled) return;
+  if (droneVoice) return; // déjà actif
+  // Utilise harpDrone ou padSynth comme support du drone
+  const droneInst = harpDrone || padSynth;
+  if (!droneInst) return;
+  const tonicNote = state.key + '2';
+  try {
+    droneInst.triggerAttack(tonicNote, undefined, 0.25);
+    droneVoice = { inst: droneInst, note: tonicNote };
+  } catch(e){}
+}
+function stopDrone(){
+  if (!droneVoice) return;
+  try { droneVoice.inst.triggerRelease(droneVoice.note); } catch(e){}
+  droneVoice = null;
+}
+
+// 7. ─── ACCORDS ÉTENDUS ─── //
+// Transforme un accord triade en accord étendu (sus2, sus4, maj7, add9, slash)
+function getExtendedChord(chord){
+  if (prophetic.extendedChords === 'off') return chord.notes;
+
+  const root = chord.notes[0];
+  const third = chord.notes[1];
+  const fifth = chord.notes[2];
+  const rootIdx = NOTES.indexOf(root);
+
+  // Extensions disponibles
+  const extensions = [];
+  // sus2 : remplace la tierce par la 2nde
+  extensions.push({ name: 'sus2', notes: [root, NOTES[(rootIdx + 2) % 12], fifth] });
+  // sus4 : remplace la tierce par la 4te
+  extensions.push({ name: 'sus4', notes: [root, NOTES[(rootIdx + 5) % 12], fifth] });
+  // add9 : ajoute la 9e (= 2nde octave +1)
+  extensions.push({ name: 'add9', notes: [root, third, fifth, NOTES[(rootIdx + 2) % 12]] });
+
+  if (prophetic.extendedChords === 'rich') {
+    // maj7 : ajoute la 7e majeure (11 demi-tons)
+    extensions.push({ name: 'maj7', notes: [root, third, fifth, NOTES[(rootIdx + 11) % 12]] });
+    // m7 : ajoute la 7e mineure (10 demi-tons)
+    extensions.push({ name: 'min7', notes: [root, third, fifth, NOTES[(rootIdx + 10) % 12]] });
+    // 6 : ajoute la 6e (9 demi-tons) — sonorité gospel
+    extensions.push({ name: '6', notes: [root, third, fifth, NOTES[(rootIdx + 9) % 12]] });
+  }
+
+  // Probabilité d'utiliser une extension : 35% subtile, 60% rich
+  const probability = prophetic.extendedChords === 'subtle' ? 0.35 : 0.6;
+  if (Math.random() > probability) return chord.notes; // accord simple
+
+  const ext = extensions[Math.floor(Math.random() * extensions.length)];
+  return ext.notes;
+}
+
+// 9. ─── ÉCHOS MÉLODIQUES ─── //
+// Joue une note avec ses échos décroissants
+function playWithEchoes(instrument, noteName, time, velocity = 0.5){
+  if (!instrument || !instrument.triggerAttackRelease) return;
+  const echoCount = prophetic.echoes === 'off' ? 0 : prophetic.echoes === 'subtle' ? 1 : 3;
+  // Note principale
+  try { instrument.triggerAttackRelease(noteName, '8n', time, velocity); } catch(e){}
+  // Échos
+  for (let i = 1; i <= echoCount; i++) {
+    const echoTime = time + i * 0.18;  // 180ms entre chaque écho
+    const echoVel = velocity * Math.pow(0.55, i); // décroissance exponentielle
+    try { instrument.triggerAttackRelease(noteName, '16n', echoTime, echoVel); } catch(e){}
+  }
+}
+
+// 10. ─── MUTATIONS RYTHMIQUES ─── //
+function mutateRhythm(){
+  if (!prophetic.rhythmMutation) return;
+  if (!prophetic.originalRhythm) {
+    prophetic.originalRhythm = JSON.parse(JSON.stringify(state.rhythm));
+  }
+  // Crée une mutation : 1-3 swaps de pas dans 1-2 instruments
+  const instruments = ['kick', 'snare', 'hat', 'shaker'];
+  const newRhythm = JSON.parse(JSON.stringify(prophetic.originalRhythm));
+  const numMutations = 1 + Math.floor(Math.random() * 2);
+  for (let m = 0; m < numMutations; m++) {
+    const inst = instruments[Math.floor(Math.random() * instruments.length)];
+    if (!newRhythm[inst]) continue;
+    // Swap deux pas aléatoires
+    const i = Math.floor(Math.random() * 16);
+    const j = Math.floor(Math.random() * 16);
+    [newRhythm[inst][i], newRhythm[inst][j]] = [newRhythm[inst][j], newRhythm[inst][i]];
+  }
+  state.rhythm = newRhythm;
+  renderRhythm();
+}
+
+// 11. ─── CRESCENDO/DECRESCENDO ─── //
+function getCrescendoMultiplier(){
+  if (!prophetic.crescendoMode || prophetic.crescendoMode === 'off') return 1.0;
+  // Combine avec le crescendoLevel des sections
+  return prophetic.crescendoLevel || 0.7;
+}
+
+// ─── ORCHESTRATEUR PRINCIPAL ─── //
+// Appelé à chaque mesure (par la boucle dans tick()) pour faire évoluer la session
+function updateMusicianBeat(){
+  if (!prophetic.enabled) return;
+
+  // Phase dynamique (oscillation entre 0 et 1 sur N mesures)
+  prophetic.dynamicPhase = (prophetic.dynamicPhase + 1 / prophetic.dynamicCycleBars) % 1;
+
+  // Compteurs de mesures
+  prophetic.measuresSinceShuffle++;
+  prophetic.measuresSinceModulation++;
+  prophetic.measuresSinceRhythmMutation++;
+
+  // 2. Progression shuffle
+  if (prophetic.progressionShuffle && prophetic.measuresSinceShuffle >= prophetic.shuffleEvery) {
+    shuffleProgression();
+    prophetic.measuresSinceShuffle = 0;
+  }
+
+  // 4. Modulation
+  if (prophetic.modulation === 'rare' && prophetic.measuresSinceModulation >= 32) {
+    modulateKey();
+    prophetic.measuresSinceModulation = 0;
+  } else if (prophetic.modulation === 'frequent' && prophetic.measuresSinceModulation >= 16) {
+    modulateKey();
+    prophetic.measuresSinceModulation = 0;
+  }
+
+  // 5. Sections (avance de 1 mesure)
+  if (prophetic.sections || prophetic.continuousPrayer) {
+    advanceSection();
+  }
+
+  // 10. Mutations rythmiques (toutes les 8 mesures)
+  if (prophetic.rhythmMutation && prophetic.measuresSinceRhythmMutation >= 8) {
+    mutateRhythm();
+    prophetic.measuresSinceRhythmMutation = 0;
+  }
+}
+
 function propheticToggle(){
   prophetic.enabled = !prophetic.enabled;
   const btn = document.getElementById('prophetic-toggle');
@@ -4737,6 +5185,50 @@ document.getElementById('prophetic-recompose').addEventListener('click', () => {
   } else {
     status.textContent = '✦ ' + layers.join(' · ');
   }
+});
+
+// ─── Listeners du Musicien Vivant ───
+document.getElementById('prophetic-octave-jump').addEventListener('change', e => {
+  prophetic.octaveJump = e.target.value === 'on';
+});
+document.getElementById('prophetic-progression-shuffle').addEventListener('change', e => {
+  const v = e.target.value;
+  prophetic.progressionShuffle = v !== 'off';
+  if (v === 'every8') prophetic.shuffleEvery = 8;
+  else if (v === 'every16') prophetic.shuffleEvery = 16;
+  else if (v === 'every32') prophetic.shuffleEvery = 32;
+});
+document.getElementById('prophetic-dynamic').addEventListener('change', e => {
+  const v = e.target.value;
+  prophetic.dynamicWave = v !== 'off';
+  prophetic.dynamicAmount = v === 'strong' ? 0.5 : v === 'subtle' ? 0.25 : 0;
+});
+document.getElementById('prophetic-modulation').addEventListener('change', e => {
+  prophetic.modulation = e.target.value;
+});
+document.getElementById('prophetic-sections').addEventListener('change', e => {
+  prophetic.sections = e.target.value === 'on';
+  prophetic.currentSection = 'verse';
+  prophetic.measuresInSection = 0;
+});
+document.getElementById('prophetic-drone').addEventListener('change', e => {
+  prophetic.drone = e.target.value === 'on';
+});
+document.getElementById('prophetic-extended').addEventListener('change', e => {
+  prophetic.extendedChords = e.target.value;
+});
+document.getElementById('prophetic-echoes').addEventListener('change', e => {
+  prophetic.echoes = e.target.value;
+});
+document.getElementById('prophetic-rhythm-mutation').addEventListener('change', e => {
+  prophetic.rhythmMutation = e.target.value === 'on';
+});
+document.getElementById('prophetic-crescendo').addEventListener('change', e => {
+  const v = e.target.value;
+  prophetic.crescendoMode = v;
+});
+document.getElementById('prophetic-continuous').addEventListener('change', e => {
+  prophetic.continuousPrayer = e.target.value === 'on';
 });
 
 document.getElementById('regenerate').addEventListener('click', regenerate);
