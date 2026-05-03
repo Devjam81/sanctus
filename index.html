@@ -3456,39 +3456,68 @@ async function startPlayback(){
         });
       } else if (state.style === 'intimite') {
         // ─── INTIMITÉ AVEC DIEU (style Naomie Grace) ───
-        // Piano cristallin + nappe douce + arpège mélodique simple + sub-bass discret
         const root = chord.notes[0];
         const third = chord.notes[1];
         const fifth = chord.notes[2];
         const dur = state.barsPerChord + 'm';
+        const durSec = state.barsPerChord * 4 * 60 / state.tempo;
 
-        // Sub-bass très doux à la fondamentale (présence sans dominer)
-        bassSynth.triggerAttackRelease(root + '2', dur, time, 0.6);
+        // ─── Accords étendus si prophétique ───
+        const finalChord = prophetic.enabled
+          ? { ...chord, notes: getExtendedChord(chord) }
+          : chord;
+        const fRoot = finalChord.notes[0];
+        const fThird = finalChord.notes[1];
+        const fFifth = finalChord.notes[2];
 
-        // Nappe de fond : pad doux qui tient l'accord (utilise stringsMid si dispo, sinon piano standard)
+        // Multiplicateur de volume dynamique
+        const dynVel = prophetic.enabled
+          ? Math.max(0.3, getDynamicMultiplier() * getCrescendoMultiplier())
+          : 1.0;
+
+        // Sub-bass très doux
+        bassSynth.triggerAttackRelease(fRoot + '2', dur, time, 0.6 * dynVel);
+
+        // Nappe de fond
         if (stringsMid) {
-          stringsMid.triggerAttackRelease([root + '3', third + '3', fifth + '3'], dur, time, 0.5);
+          stringsMid.triggerAttackRelease([fRoot + '3', fThird + '3', fFifth + '3'], dur, time, 0.5 * dynVel);
         }
 
-        // Piano cristallin : voicing aéré (sans la 5te basse, plus de tierce)
+        // Piano cristallin : voicing varié si prophétique, sinon standard
         const instrument = getActiveChordInstrument();
-        instrument.triggerAttackRelease([
-          root + '4',
-          third + '4',
-          fifth + '4'
-        ], dur, time, 0.8);
+        const voicing = prophetic.enabled
+          ? getVariedVoicing(finalChord, 4)
+          : [fRoot + '4', fThird + '4', fFifth + '4'];
+        instrument.triggerAttackRelease(voicing, dur, time, 0.8 * dynVel);
 
-        // Petit motif arpège piano qui "dit" l'accord en mélodie
-        // Pattern : 5te aigue - 8ve - 3ce - 1ère sur la durée de l'accord
-        const melody = [fifth + '5', root + '5', third + '5', root + '5'];
-        const stepDur = (60 / state.tempo) / 2; // demi-temps
-        const totalDuration = state.barsPerChord * 4 * (60 / state.tempo); // sec
+        // Petit motif arpège piano (avec octave jump si prophétique)
+        const melodyOct = prophetic.enabled ? pickRandomOctaveHigh() : 5;
+        const melody = [fFifth + melodyOct, fRoot + melodyOct, fThird + melodyOct, fRoot + melodyOct];
+        const totalDuration = state.barsPerChord * 4 * (60 / state.tempo);
         const spacing = totalDuration / melody.length;
         melody.forEach((note, i) => {
-          // Délai aléatoire subtil pour humaniser
           const jitter = (Math.random() - 0.5) * 0.05;
-          instrument.triggerAttackRelease(note, '2n', time + (i * spacing) + jitter, 0.55);
+          const noteTime = time + (i * spacing) + jitter;
+          if (prophetic.enabled && prophetic.echoes !== 'off') {
+            playWithEchoes(instrument, note, noteTime, 0.55 * dynVel);
+          } else {
+            instrument.triggerAttackRelease(note, '2n', noteTime, 0.55 * dynVel);
+          }
         });
+
+        // ─── Mode prophétique : ajouts orchestraux ───
+        if (prophetic.enabled) {
+          playOrchestralLayers(finalChord, time, durSec);
+          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          generateArpeggio(finalChord, time, durSec, instrument);
+          const nextIdx = (chordIdx + 1) % state.chords.length;
+          const nextChord = state.chords[nextIdx];
+          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          // Drone tonique
+          if (prophetic.drone && !droneVoice) startDrone();
+          else if (!prophetic.drone && droneVoice) stopDrone();
+          prophetic.cycleCount++;
+        }
       } else {
         const instrument = getActiveChordInstrument();
         const dur = (isSoaking ? 4 : state.barsPerChord) + 'm';
@@ -3532,6 +3561,35 @@ async function startPlayback(){
           prophetic.cycleCount++;
         }
       }
+
+      // ─── MOTEUR VIVANT POUR TOUS LES STYLES SPÉCIAUX (harp, strings, soaking, prophetic) ───
+      // Ces styles ont leur propre bloc de lecture mais doivent aussi bénéficier du moteur vivant
+      const specialStyles = ['harp', 'strings', 'soaking', 'prophetic'];
+      if (prophetic.enabled && specialStyles.includes(state.style)) {
+        const instrument = getActiveChordInstrument();
+        const durSec = state.barsPerChord * 4 * 60 / state.tempo;
+        const finalChord = { ...chord, notes: getExtendedChord(chord) };
+
+        // Couches orchestrales
+        playOrchestralLayers(finalChord, time, durSec);
+
+        // Embellissements aux aigus avec échos
+        if (instrument) {
+          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          generateArpeggio(finalChord, time, durSec, instrument);
+          // Note de passage
+          const nextIdx = (chordIdx + 1) % state.chords.length;
+          const nextChord = state.chords[nextIdx];
+          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+        }
+
+        // Drone tonique
+        if (prophetic.drone && !droneVoice) startDrone();
+        else if (!prophetic.drone && droneVoice) stopDrone();
+
+        prophetic.cycleCount++;
+      }
+
       Tone.Draw.schedule(() => highlightChord(chordIdx), time);
     }
 
