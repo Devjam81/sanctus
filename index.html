@@ -2352,6 +2352,10 @@ function cascadeLoop(){
   });
 
   // Dessiner les particules
+  // Dessiner les particules (max 100 pour éviter les saccades)
+  if (cascade.particles.length > 100) {
+    cascade.particles = cascade.particles.slice(-100);
+  }
   cascade.particles = cascade.particles.filter(p => {
     p.x += p.vx;
     p.y += p.vy;
@@ -2374,7 +2378,8 @@ function cascadeLoop(){
 }
 
 function spawnImpactParticles(x, y, color, isRoot){
-  const count = isRoot ? 18 : 10;
+  // Réduit pour éviter les saccades CPU sur les ordis modestes
+  const count = isRoot ? 8 : 5;
   for (let i = 0; i < count; i++) {
     const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 0.8;
     const speed = 2 + Math.random() * 4;
@@ -3505,14 +3510,21 @@ async function startPlayback(){
           }
         });
 
-        // ─── Mode prophétique : ajouts orchestraux ───
+        // ─── Mode prophétique : ajouts orchestraux (allégés) ───
         if (prophetic.enabled) {
           playOrchestralLayers(finalChord, time, durSec);
-          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
-          generateArpeggio(finalChord, time, durSec, instrument);
-          const nextIdx = (chordIdx + 1) % state.chords.length;
-          const nextChord = state.chords[nextIdx];
-          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          // Alterner flourish OU arpège selon le hasard pour éviter de surcharger
+          if (Math.random() < 0.55) {
+            generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          } else if (Math.random() < 0.55) {
+            generateArpeggio(finalChord, time, durSec, instrument);
+          }
+          // Note de passage rarement
+          if (Math.random() < 0.25) {
+            const nextIdx = (chordIdx + 1) % state.chords.length;
+            const nextChord = state.chords[nextIdx];
+            generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          }
           // Drone tonique
           if (prophetic.drone && !droneVoice) startDrone();
           else if (!prophetic.drone && droneVoice) stopDrone();
@@ -3545,45 +3557,53 @@ async function startPlayback(){
           bassSynth.triggerAttackRelease(bass, state.barsPerChord + 'm', time, dynVel);
         }
 
-        // Mode prophétique : ajouter embellissements et notes de passage
+        // Mode prophétique : ajouter embellissements et notes de passage (alternés pour perf)
         if (prophetic.enabled) {
           playOrchestralLayers(finalChord, time, durSec);
-          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
-          generateArpeggio(finalChord, time, durSec, instrument);
-          // Note de passage vers le prochain accord
-          const nextIdx = (chordIdx + 1) % state.chords.length;
-          const nextChord = state.chords[nextIdx];
-          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
-          // ─── DRONE TONIQUE ─── //
+          // Alterner flourish OU arpège pour réduire le nombre de notes simultanées
+          if (Math.random() < 0.55) {
+            generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          } else if (Math.random() < 0.55) {
+            generateArpeggio(finalChord, time, durSec, instrument);
+          }
+          // Note de passage rare
+          if (Math.random() < 0.25) {
+            const nextIdx = (chordIdx + 1) % state.chords.length;
+            const nextChord = state.chords[nextIdx];
+            generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          }
+          // Drone tonique
           if (prophetic.drone && !droneVoice) startDrone();
           else if (!prophetic.drone && droneVoice) stopDrone();
-          // Incrémenter le cycle pour les variations
           prophetic.cycleCount++;
         }
       }
 
-      // ─── MOTEUR VIVANT POUR TOUS LES STYLES SPÉCIAUX (harp, strings, soaking, prophetic) ───
-      // Ces styles ont leur propre bloc de lecture mais doivent aussi bénéficier du moteur vivant
+      // ─── MOTEUR VIVANT POUR LES STYLES SPÉCIAUX (allégé pour perf) ───
+      // Les styles harp/strings/soaking/prophetic ont déjà leur propre richesse.
+      // On ajoute juste les éléments légers : flourish OU arpège, pas les deux.
       const specialStyles = ['harp', 'strings', 'soaking', 'prophetic'];
       if (prophetic.enabled && specialStyles.includes(state.style)) {
         const instrument = getActiveChordInstrument();
         const durSec = state.barsPerChord * 4 * 60 / state.tempo;
         const finalChord = { ...chord, notes: getExtendedChord(chord) };
 
-        // Couches orchestrales
-        playOrchestralLayers(finalChord, time, durSec);
-
-        // Embellissements aux aigus avec échos
         if (instrument) {
-          generateFlourishWithEchoes(finalChord, time, durSec, instrument);
-          generateArpeggio(finalChord, time, durSec, instrument);
-          // Note de passage
-          const nextIdx = (chordIdx + 1) % state.chords.length;
-          const nextChord = state.chords[nextIdx];
-          generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          // Alterner flourish OU arpège (pas les deux à la fois pour éviter la saturation)
+          if (Math.random() < 0.5) {
+            generateFlourishWithEchoes(finalChord, time, durSec, instrument);
+          } else {
+            generateArpeggio(finalChord, time, durSec, instrument);
+          }
+          // Note de passage seulement parfois
+          if (Math.random() < 0.3) {
+            const nextIdx = (chordIdx + 1) % state.chords.length;
+            const nextChord = state.chords[nextIdx];
+            generatePassingNote(finalChord, nextChord, time, durSec, instrument);
+          }
         }
 
-        // Drone tonique
+        // Drone tonique (toujours, c'est léger)
         if (prophetic.drone && !droneVoice) startDrone();
         else if (!prophetic.drone && droneVoice) stopDrone();
 
