@@ -1609,13 +1609,6 @@
               <option value="every32">Toutes les 32 mesures (lent)</option>
             </select>
           </div>
-          <div class="control-group"><label>Évolutions dynamiques</label>
-            <select id="prophetic-dynamic">
-              <option value="off">Volume constant</option>
-              <option value="subtle" selected>Vagues subtiles</option>
-              <option value="strong">Vagues marquées</option>
-            </select>
-          </div>
           <div class="control-group"><label>Modulation de tonalité</label>
             <select id="prophetic-modulation">
               <option value="off" selected>Aucune</option>
@@ -1647,19 +1640,6 @@
               <option value="off">Désactivés</option>
               <option value="subtle" selected>Subtils (1 écho)</option>
               <option value="rich">Riches (3 échos)</option>
-            </select>
-          </div>
-          <div class="control-group"><label>Mutations rythmiques</label>
-            <select id="prophetic-rhythm-mutation">
-              <option value="off" selected>Rythme stable</option>
-              <option value="on">Mute toutes les 8 mesures</option>
-            </select>
-          </div>
-          <div class="control-group"><label>Crescendos auto</label>
-            <select id="prophetic-crescendo">
-              <option value="off" selected>Volume fixe</option>
-              <option value="subtle">Vagues douces</option>
-              <option value="strong">Vagues prophétiques</option>
             </select>
           </div>
           <div class="control-group" style="grid-column: span 2;">
@@ -1857,6 +1837,18 @@
         <span>🌾 Shaker</span>
       </label>
     </div>
+
+    <!-- 🎲 Générateur de patterns -->
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; justify-content: center; padding: 0.75rem; background: rgba(244, 196, 48, 0.04); border: 1px solid rgba(244, 196, 48, 0.15); border-radius: 4px;">
+      <span style="font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase; align-self: center; margin-right: 0.5rem;">Patterns</span>
+      <button class="btn" id="rhythm-random" style="font-size: 0.78rem;">🎲 Aléatoire musical</button>
+      <button class="btn" id="rhythm-preset-worship" style="font-size: 0.78rem;">🕊️ Adoration</button>
+      <button class="btn" id="rhythm-preset-prophetic" style="font-size: 0.78rem;">✦ Prophétique</button>
+      <button class="btn" id="rhythm-preset-gospel" style="font-size: 0.78rem;">🎵 Gospel</button>
+      <button class="btn" id="rhythm-preset-meditation" style="font-size: 0.78rem;">☾ Méditation</button>
+      <button class="btn" id="rhythm-clear" style="font-size: 0.78rem; border-color: rgba(196, 68, 68, 0.4); color: #c44;">🗑️ Effacer</button>
+    </div>
+
     <div class="rhythm-grid" id="rhythm-grid"></div>
   </section>
 
@@ -2512,6 +2504,26 @@ const drums = {
 };
 
 // Joue un instrument de batterie en respectant le kit et le mute
+// Tracker les derniers temps de déclenchement par instrument pour éviter
+// l'erreur "Start time must be strictly greater than previous start time"
+const _lastDrumTime = { kick: 0, snare: 0, hat: 0, shaker: 0 };
+
+function safeDrumTrigger(instrument, instrumentKey, args){
+  // Si le time est <= au précédent, on ajoute un micro-décalage (1ms)
+  const time = args[args.length - 2]; // avant-dernier argument = time
+  let safeTime = time;
+  if (typeof time === 'number' && safeTime <= _lastDrumTime[instrumentKey]) {
+    safeTime = _lastDrumTime[instrumentKey] + 0.001;
+    args[args.length - 2] = safeTime;
+  }
+  _lastDrumTime[instrumentKey] = safeTime;
+  try {
+    instrument.triggerAttackRelease(...args);
+  } catch(e) {
+    // Silencieux : les collisions de timing ne doivent pas crasher la musique
+  }
+}
+
 function playDrum(type, time, velocity = 1.0){
   if (drums.muted[type]) return;
   if (!kick) return; // pas encore initialisé
@@ -2520,59 +2532,59 @@ function playDrum(type, time, velocity = 1.0){
 
   if (type === 'kick') {
     if (kit === 'acoustic') {
-      kick.triggerAttackRelease('A1', '8n', time, velocity);
+      safeDrumTrigger(kick, 'kick', ['A1', '8n', time, velocity]);
     } else if (kit === 'gospel') {
-      kick.triggerAttackRelease('B1', '8n', time, velocity * 0.85);
+      safeDrumTrigger(kick, 'kick', ['B1', '8n', time, velocity * 0.85]);
     } else if (kit === 'electronic') {
-      kick.triggerAttackRelease('C1', '4n', time, velocity);
+      safeDrumTrigger(kick, 'kick', ['C1', '4n', time, velocity]);
     } else if (kit === 'brushes') {
-      kick.triggerAttackRelease('A1', '16n', time, velocity * 0.6);
+      safeDrumTrigger(kick, 'kick', ['A1', '16n', time, velocity * 0.6]);
     } else if (kit === 'tribal') {
-      kick.triggerAttackRelease('F1', '8n', time, velocity * 1.1);
+      safeDrumTrigger(kick, 'kick', ['F1', '8n', time, velocity * 1.1]);
     } else {
-      kick.triggerAttackRelease('C2', '8n', time, velocity);
+      safeDrumTrigger(kick, 'kick', ['C2', '8n', time, velocity]);
     }
   } else if (type === 'snare') {
     if (kit === 'acoustic') {
-      snare.triggerAttackRelease('16n', time, velocity);
+      safeDrumTrigger(snare, 'snare', ['16n', time, velocity]);
     } else if (kit === 'gospel') {
-      snare.triggerAttackRelease('8n', time, velocity * 0.7);
+      safeDrumTrigger(snare, 'snare', ['8n', time, velocity * 0.7]);
     } else if (kit === 'electronic') {
-      snare.triggerAttackRelease('32n', time, velocity * 1.1);
+      safeDrumTrigger(snare, 'snare', ['32n', time, velocity * 1.1]);
     } else if (kit === 'brushes') {
-      shaker.triggerAttackRelease('8n', time, velocity * 0.8); // remplace par swish
+      safeDrumTrigger(shaker, 'shaker', ['8n', time, velocity * 0.8]);
     } else if (kit === 'tribal') {
-      kick.triggerAttackRelease('D2', '16n', time, velocity * 0.7); // tom haut
+      safeDrumTrigger(kick, 'kick', ['D2', '16n', time, velocity * 0.7]);
     } else {
-      snare.triggerAttackRelease('16n', time, velocity);
+      safeDrumTrigger(snare, 'snare', ['16n', time, velocity]);
     }
   } else if (type === 'hat') {
     if (kit === 'acoustic') {
-      hat.triggerAttackRelease('C5', '32n', time, velocity * 0.5);
+      safeDrumTrigger(hat, 'hat', ['C5', '32n', time, velocity * 0.5]);
     } else if (kit === 'gospel') {
-      hat.triggerAttackRelease('A4', '32n', time, velocity * 0.4);
+      safeDrumTrigger(hat, 'hat', ['A4', '32n', time, velocity * 0.4]);
     } else if (kit === 'electronic') {
-      hat.triggerAttackRelease('E5', '64n', time, velocity * 0.7);
+      safeDrumTrigger(hat, 'hat', ['E5', '64n', time, velocity * 0.7]);
     } else if (kit === 'brushes') {
-      hat.triggerAttackRelease('D4', '32n', time, velocity * 0.25);
+      safeDrumTrigger(hat, 'hat', ['D4', '32n', time, velocity * 0.25]);
     } else if (kit === 'tribal') {
-      shaker.triggerAttackRelease('16n', time, velocity * 0.5);
+      safeDrumTrigger(shaker, 'shaker', ['16n', time, velocity * 0.5]);
     } else {
-      hat.triggerAttackRelease('32n', time, velocity);
+      safeDrumTrigger(hat, 'hat', ['32n', time, velocity]);
     }
   } else if (type === 'shaker') {
     if (kit === 'acoustic') {
-      shaker.triggerAttackRelease('16n', time, velocity * 0.8);
+      safeDrumTrigger(shaker, 'shaker', ['16n', time, velocity * 0.8]);
     } else if (kit === 'gospel') {
-      shaker.triggerAttackRelease('16n', time, velocity * 0.6);
+      safeDrumTrigger(shaker, 'shaker', ['16n', time, velocity * 0.6]);
     } else if (kit === 'electronic') {
-      hat.triggerAttackRelease('B5', '64n', time, velocity * 0.4); // hi-hat fin
+      safeDrumTrigger(hat, 'hat', ['B5', '64n', time, velocity * 0.4]);
     } else if (kit === 'brushes') {
-      shaker.triggerAttackRelease('8n', time, velocity * 0.5);
+      safeDrumTrigger(shaker, 'shaker', ['8n', time, velocity * 0.5]);
     } else if (kit === 'tribal') {
-      shaker.triggerAttackRelease('16n', time, velocity);
+      safeDrumTrigger(shaker, 'shaker', ['16n', time, velocity]);
     } else {
-      shaker.triggerAttackRelease('16n', time, velocity);
+      safeDrumTrigger(shaker, 'shaker', ['16n', time, velocity]);
     }
   }
 }
@@ -3246,6 +3258,130 @@ function renderScrollChords(){
   }
 }
 
+/* ============================================================
+   🎲 GÉNÉRATEUR DE PATTERNS RYTHMIQUES INTELLIGENTS
+   Créé des rythmes musicalement cohérents (jamais du chaos)
+   ============================================================ */
+
+// Patterns prédéfinis "verifies" - inspirés des classiques de la louange
+const RHYTHM_PRESETS = {
+  worship: [
+    // Pop louange Hillsong-style
+    { kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], hat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+    // Bethel ballad
+    { kick:[1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], hat:[1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1], shaker:[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1] },
+    // Soul gospel doux
+    { kick:[1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1], hat:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], shaker:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] }
+  ],
+  prophetic: [
+    // Très épuré, juste un kick et shaker
+    { kick:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0] },
+    // Pulsation lente type Misty Edwards
+    { kick:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0] },
+    // Roulement d'orage
+    { kick:[1,0,0,1,0,0,0,0,1,0,0,1,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] }
+  ],
+  gospel: [
+    // Gospel actif syncope
+    { kick:[1,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0], snare:[0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,1], hat:[1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], shaker:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0] },
+    // Gospel ballad
+    { kick:[1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1], hat:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1], shaker:[1,0,0,1,0,0,1,0,0,0,1,0,0,1,0,1] },
+    // Gospel triolet
+    { kick:[1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1], snare:[0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0], hat:[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] }
+  ],
+  meditation: [
+    // Très calme, juste shaker
+    { kick:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0] },
+    // Rien sauf une touche
+    { kick:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0] },
+    // Pulsation cardiaque
+    { kick:[1,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], shaker:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] }
+  ]
+};
+
+// Génère un pattern aléatoire MUSICALEMENT cohérent (pas du chaos)
+function generateRandomMusicalRhythm(){
+  // Règles musicales :
+  // - Kick : sur les temps forts (positions 0, 8 surtout, parfois 4, 12)
+  // - Snare : sur les contre-temps (4, 12 toujours, 8 parfois)
+  // - Hat : continu ou en double-croche, jamais sur silences imprévus
+  // - Shaker : pattern régulier (octaves de croches)
+
+  const rhythm = {
+    kick: new Array(16).fill(0),
+    snare: new Array(16).fill(0),
+    hat: new Array(16).fill(0),
+    shaker: new Array(16).fill(0)
+  };
+
+  // KICK : positions 0 (toujours) + 8 (très fréquent) + variantes
+  rhythm.kick[0] = 1;
+  if (Math.random() < 0.85) rhythm.kick[8] = 1;
+  // Variantes : 4ème croche, double-kick avant le snare
+  const kickVariants = [
+    () => { rhythm.kick[6] = 1; },                      // syncope
+    () => { rhythm.kick[3] = 1; },                      // syncope
+    () => { rhythm.kick[10] = 1; rhythm.kick[14] = 1; }, // gospel-style
+    () => { rhythm.kick[11] = 1; },                      // syncope avant 12
+    () => { /* rien de plus */ }
+  ];
+  kickVariants[Math.floor(Math.random() * kickVariants.length)]();
+
+  // SNARE : 4 et 12 (back-beat classique)
+  rhythm.snare[4] = 1;
+  rhythm.snare[12] = 1;
+  // Parfois un ghost note ou un fill
+  if (Math.random() < 0.4) {
+    const fillPos = [7, 14, 15][Math.floor(Math.random() * 3)];
+    rhythm.snare[fillPos] = 1;
+  }
+
+  // HAT : choix de pattern régulier
+  const hatPatterns = [
+    [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],  // croches
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // double-croches
+    [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],  // triolet feel
+    [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],  // off-beat
+    [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1]   // gospel hat
+  ];
+  rhythm.hat = [...hatPatterns[Math.floor(Math.random() * hatPatterns.length)]];
+
+  // SHAKER : pattern continu cohérent
+  const shakerPatterns = [
+    [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],  // off-beat croches
+    [1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],  // syncope
+    [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],  // 4 temps simples
+    [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],  // triolet
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]   // muet (parfois plus aérien)
+  ];
+  rhythm.shaker = [...shakerPatterns[Math.floor(Math.random() * shakerPatterns.length)]];
+
+  return rhythm;
+}
+
+// Applique un pattern et rafraîchit l'affichage
+function applyRhythm(newRhythm){
+  state.rhythm = JSON.parse(JSON.stringify(newRhythm));
+  renderRhythm();
+}
+
+// Choisit un preset aléatoire d'une catégorie
+function pickPreset(category){
+  const presets = RHYTHM_PRESETS[category];
+  if (!presets || presets.length === 0) return null;
+  return presets[Math.floor(Math.random() * presets.length)];
+}
+
+// Pattern vide
+function clearRhythm(){
+  applyRhythm({
+    kick: new Array(16).fill(0),
+    snare: new Array(16).fill(0),
+    hat: new Array(16).fill(0),
+    shaker: new Array(16).fill(0)
+  });
+}
+
 function renderRhythm(){
   const grid = document.getElementById('rhythm-grid');
   grid.innerHTML = '';
@@ -3653,6 +3789,11 @@ async function startPlayback(){
   loop.start(0);
   Tone.Transport.start();
   state.playing = true;
+  // Reset tracker drum pour éviter les erreurs de timing
+  _lastDrumTime.kick = 0;
+  _lastDrumTime.snare = 0;
+  _lastDrumTime.hat = 0;
+  _lastDrumTime.shaker = 0;
   // Reset compteur prophétique pour démarrer frais
   prophetic.cycleCount = 0;
   prophetic.lastVoicingIdx = -1;
@@ -4007,11 +4148,15 @@ async function httpPost(current, next, blink){
 }
 
 async function httpClear(){
+  // Ne rien faire si pas en mode HTTP
+  if (led.mode !== 'http') return;
   try {
     await fetch(`${led.url}/sanctus/clear`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, mode: 'cors'
     });
-  } catch(e) {}
+  } catch(e) {
+    // Silencieux — l'erreur est attendue si le Pi n'est pas accessible
+  }
 }
 
 /* ─── Mode guide unifié ─── */
@@ -4043,7 +4188,10 @@ async function ledSendChord(currentIdx){
 async function ledClear(){
   if (led.blinkInterval) { clearInterval(led.blinkInterval); led.blinkInterval = null; }
   midiAllOff();
-  await httpClear();
+  // N'appeler httpClear que si on est en mode HTTP (sinon pollue la console pour rien)
+  if (led.mode === 'http') {
+    await httpClear();
+  }
 }
 
 function setLedStatus(level, text){
@@ -4514,6 +4662,30 @@ document.getElementById('rhythm-volume-slider').addEventListener('input', e => {
     });
     cb.parentElement.classList.toggle('active', cb.checked);
   }
+});
+
+// 🎲 Listeners du générateur de patterns rythmiques
+document.getElementById('rhythm-random').addEventListener('click', () => {
+  applyRhythm(generateRandomMusicalRhythm());
+});
+document.getElementById('rhythm-preset-worship').addEventListener('click', () => {
+  const preset = pickPreset('worship');
+  if (preset) applyRhythm(preset);
+});
+document.getElementById('rhythm-preset-prophetic').addEventListener('click', () => {
+  const preset = pickPreset('prophetic');
+  if (preset) applyRhythm(preset);
+});
+document.getElementById('rhythm-preset-gospel').addEventListener('click', () => {
+  const preset = pickPreset('gospel');
+  if (preset) applyRhythm(preset);
+});
+document.getElementById('rhythm-preset-meditation').addEventListener('click', () => {
+  const preset = pickPreset('meditation');
+  if (preset) applyRhythm(preset);
+});
+document.getElementById('rhythm-clear').addEventListener('click', () => {
+  if (confirm('Effacer tout le pattern rythmique ?')) clearRhythm();
 });
 
 /* ============================================================
@@ -5001,7 +5173,13 @@ function pickRandomOctaveHigh(){
 
 // 2. ─── PROGRESSION SHUFFLE ─── //
 // Génère une nouvelle progression aléatoire dans la même tonalité
+let _lastTransitionTime = 0;
 function shuffleProgression(){
+  // Throttle : minimum 2 secondes entre 2 changements pour éviter les saccades
+  const now = performance.now();
+  if (now - _lastTransitionTime < 2000) return;
+  _lastTransitionTime = now;
+
   const progs = PROGRESSIONS[state.mode];
   if (!progs) return;
   const names = Object.keys(progs);
@@ -5016,14 +5194,27 @@ function shuffleProgression(){
   state.progName = newName;
   // generateChords() lit directement PROGRESSIONS[state.mode][state.progName]
   generateChords();
-  renderChords();
-  renderScrollChords();
-  // Synchroniser le sélecteur UI
-  const sel = document.getElementById('progression');
-  if (sel) sel.value = newName;
-  // Mettre à jour le nom affiché
-  const progNameEl = document.getElementById('prog-name');
-  if (progNameEl) progNameEl.textContent = newName.replace(/-/g, ' – ');
+
+  // Différer les rendus DOM lourds pour ne pas bloquer l'audio
+  if (window.requestIdleCallback) {
+    requestIdleCallback(() => {
+      renderChords();
+      renderScrollChords();
+      const sel = document.getElementById('progression');
+      if (sel) sel.value = newName;
+      const progNameEl = document.getElementById('prog-name');
+      if (progNameEl) progNameEl.textContent = newName.replace(/-/g, ' – ');
+    }, { timeout: 500 });
+  } else {
+    setTimeout(() => {
+      renderChords();
+      renderScrollChords();
+      const sel = document.getElementById('progression');
+      if (sel) sel.value = newName;
+      const progNameEl = document.getElementById('prog-name');
+      if (progNameEl) progNameEl.textContent = newName.replace(/-/g, ' – ');
+    }, 50);
+  }
   console.log(`✦ Progression shuffle : ${newName}`);
 }
 
@@ -5049,6 +5240,11 @@ const FLAT_TO_SHARP = {
 };
 
 function modulateKey(){
+  // Throttle : modulation max toutes les 3 secondes
+  const now = performance.now();
+  if (now - _lastTransitionTime < 3000) return;
+  _lastTransitionTime = now;
+
   // Convertir state.key (Bb, Eb...) en notation NOTES (A#, D#...)
   const currentSharp = FLAT_TO_SHARP[state.key] || state.key;
   const currentIdx = NOTES.indexOf(currentSharp);
@@ -5058,24 +5254,33 @@ function modulateKey(){
   }
   const interval = MODULATION_INTERVALS[Math.floor(Math.random() * MODULATION_INTERVALS.length)];
   const newKeySharp = NOTES[(currentIdx + interval) % 12];
-  // Convertir en bémol pour le sélecteur (qui ne connaît que les bémols)
   const newKeyForSelect = ENHARMONIC_FLAT[newKeySharp] || newKeySharp;
 
-  // Vérifier que la tonalité existe dans le sélecteur (sinon prendre la plus proche)
   const sel = document.getElementById('key');
   const availableKeys = Array.from(sel.options).map(o => o.value);
   let finalKey = newKeyForSelect;
   if (!availableKeys.includes(finalKey)) {
-    // Repli : trouver la plus proche dans le cercle des quintes
     const fallbacks = ['C', 'G', 'D', 'A', 'E', 'F', 'Bb', 'Eb', 'Ab', 'B'];
     finalKey = fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
 
   state.key = finalKey;
   generateChords();
-  renderChords();
-  renderScrollChords();
-  sel.value = finalKey;
+
+  // Différer les rendus DOM
+  if (window.requestIdleCallback) {
+    requestIdleCallback(() => {
+      renderChords();
+      renderScrollChords();
+      sel.value = finalKey;
+    }, { timeout: 500 });
+  } else {
+    setTimeout(() => {
+      renderChords();
+      renderScrollChords();
+      sel.value = finalKey;
+    }, 50);
+  }
   console.log(`✦ Modulation : ${finalKey} ${state.mode}`);
 }
 
@@ -5325,46 +5530,51 @@ document.getElementById('prophetic-recompose').addEventListener('click', () => {
 });
 
 // ─── Listeners du Musicien Vivant ───
-document.getElementById('prophetic-octave-jump').addEventListener('change', e => {
+// Helper safe pour ajouter des listeners aux éléments potentiellement absents
+function safeListener(id, event, handler){
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, handler);
+}
+
+safeListener('prophetic-octave-jump', 'change', e => {
   prophetic.octaveJump = e.target.value === 'on';
 });
-document.getElementById('prophetic-progression-shuffle').addEventListener('change', e => {
+safeListener('prophetic-progression-shuffle', 'change', e => {
   const v = e.target.value;
   prophetic.progressionShuffle = v !== 'off';
   if (v === 'every8') prophetic.shuffleEvery = 8;
   else if (v === 'every16') prophetic.shuffleEvery = 16;
   else if (v === 'every32') prophetic.shuffleEvery = 32;
 });
-document.getElementById('prophetic-dynamic').addEventListener('change', e => {
+safeListener('prophetic-dynamic', 'change', e => {
   const v = e.target.value;
   prophetic.dynamicWave = v !== 'off';
   prophetic.dynamicAmount = v === 'strong' ? 0.5 : v === 'subtle' ? 0.25 : 0;
 });
-document.getElementById('prophetic-modulation').addEventListener('change', e => {
+safeListener('prophetic-modulation', 'change', e => {
   prophetic.modulation = e.target.value;
 });
-document.getElementById('prophetic-sections').addEventListener('change', e => {
+safeListener('prophetic-sections', 'change', e => {
   prophetic.sections = e.target.value === 'on';
   prophetic.currentSection = 'verse';
   prophetic.measuresInSection = 0;
 });
-document.getElementById('prophetic-drone').addEventListener('change', e => {
+safeListener('prophetic-drone', 'change', e => {
   prophetic.drone = e.target.value === 'on';
 });
-document.getElementById('prophetic-extended').addEventListener('change', e => {
+safeListener('prophetic-extended', 'change', e => {
   prophetic.extendedChords = e.target.value;
 });
-document.getElementById('prophetic-echoes').addEventListener('change', e => {
+safeListener('prophetic-echoes', 'change', e => {
   prophetic.echoes = e.target.value;
 });
-document.getElementById('prophetic-rhythm-mutation').addEventListener('change', e => {
+safeListener('prophetic-rhythm-mutation', 'change', e => {
   prophetic.rhythmMutation = e.target.value === 'on';
 });
-document.getElementById('prophetic-crescendo').addEventListener('change', e => {
-  const v = e.target.value;
-  prophetic.crescendoMode = v;
+safeListener('prophetic-crescendo', 'change', e => {
+  prophetic.crescendoMode = e.target.value;
 });
-document.getElementById('prophetic-continuous').addEventListener('change', e => {
+safeListener('prophetic-continuous', 'change', e => {
   prophetic.continuousPrayer = e.target.value === 'on';
 });
 
