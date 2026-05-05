@@ -4858,10 +4858,17 @@ function generateFlourishWithEchoes(chord, time, durationSec, instrument){
   if (!prophetic.enabled || Math.random() > prophetic.flourish) return;
   if (!instrument) return;
 
+  // ─── ADAPTIVE LOAD : adapter à la charge ─── //
+  const activeCount = Object.values(prophetic.activeLayers).filter(v => v).length;
+  const isHeavyLoad = activeCount >= 3;
+
   const scale = getScaleNotes();
   const chordTones = chord.notes;
   const oct = pickRandomOctaveHigh();
-  const numNotes = 3 + Math.floor(Math.random() * 4);
+  // Charge lourde : 2-3 notes au lieu de 3-6
+  const numNotes = isHeavyLoad
+    ? 2 + Math.floor(Math.random() * 2)
+    : 3 + Math.floor(Math.random() * 4);
   const noteSpacing = durationSec / numNotes;
 
   for (let i = 0; i < numNotes; i++) {
@@ -4880,8 +4887,8 @@ function generateFlourishWithEchoes(chord, time, durationSec, instrument){
     const velocity = 0.3 + (peak / numNotes) * 0.4 + Math.random() * 0.1;
     const jitter = (Math.random() - 0.5) * 0.03;
     const startTime = time + (i * noteSpacing) + jitter;
-    // Avec échos si activés
-    if (prophetic.echoes !== 'off') {
+    // Échos désactivés en charge lourde
+    if (prophetic.echoes !== 'off' && !isHeavyLoad) {
       playWithEchoes(instrument, noteName, startTime, velocity);
     } else {
       try { instrument.triggerAttackRelease(noteName, '8n', startTime, velocity); } catch(e){}
@@ -5099,26 +5106,35 @@ function playOrchestralLayers(chord, time, durationSec){
   const fifth = chord.notes[2];
   const dur = state.barsPerChord + 'm';
 
+  // ─── ADAPTIVE LOAD : compter les couches actives pour adapter la richesse ─── //
+  const activeCount = Object.values(layers).filter(v => v).length;
+  const isHeavyLoad = activeCount >= 3;
+
   // ─── PAD doux en fond ───
   if (layers.pad && padSynth) {
-    const padVoicing = [
-      root + '3',
-      third + '4',
-      fifth + '4'
-    ];
+    // Voicing allégé si charge lourde (2 voix au lieu de 3)
+    const padVoicing = isHeavyLoad
+      ? [root + '3', fifth + '4']
+      : [root + '3', third + '4', fifth + '4'];
     try { padSynth.triggerAttackRelease(padVoicing, dur, time, 0.55); } catch(e){}
   }
 
-  // ─── STRINGS ensemble (3 couches : grave, médium, aigu) ───
+  // ─── STRINGS ensemble (couches adaptées selon la charge) ───
   if (layers.strings && stringsLo && stringsMid && stringsHi) {
     try {
-      stringsLo.triggerAttackRelease([root + '2', fifth + '2'], dur, time, 0.5);
-      stringsMid.triggerAttackRelease([root + '3', third + '3', fifth + '3'], dur, time, 0.45);
-      stringsHi.triggerAttackRelease([third + '4', fifth + '4', root + '5'], dur, time, 0.4);
+      if (isHeavyLoad) {
+        // Charge lourde : 2 couches (grave + médium) au lieu de 3
+        stringsLo.triggerAttackRelease([root + '2'], dur, time, 0.5);
+        stringsMid.triggerAttackRelease([root + '3', fifth + '3'], dur, time, 0.45);
+      } else {
+        stringsLo.triggerAttackRelease([root + '2', fifth + '2'], dur, time, 0.5);
+        stringsMid.triggerAttackRelease([root + '3', third + '3', fifth + '3'], dur, time, 0.45);
+        stringsHi.triggerAttackRelease([third + '4', fifth + '4', root + '5'], dur, time, 0.4);
+      }
     } catch(e){}
   }
 
-  // ─── SUB-BASS profond (fondamentale très grave) ───
+  // ─── SUB-BASS profond (1 note, peu coûteux) ───
   if (layers.subBass) {
     if (stringsSubBass) {
       try { stringsSubBass.triggerAttackRelease(root + '1', dur, time, 0.6); } catch(e){}
@@ -5127,19 +5143,17 @@ function playOrchestralLayers(chord, time, durationSec){
     }
   }
 
-  // ─── HARPE DRONE (note tonique tenue à l'octave grave) ───
+  // ─── HARPE DRONE (1 note tenue, léger) ───
   if (layers.harpDrone && harpDrone) {
     try { harpDrone.triggerAttackRelease(root + '2', dur, time, 0.5); } catch(e){}
   }
 
-  // ─── HARPE ROLL (arpège roulé doux qui se déclenche) ───
+  // ─── HARPE ROLL (arpège : réduit en charge lourde) ───
   if (layers.harpRoll && harpSynth) {
-    // Pattern montant lent, prend ~70% de la durée de l'accord
-    const arpPattern = [
-      root + '3', third + '3', fifth + '3',
-      root + '4', third + '4', fifth + '4',
-      root + '5'
-    ];
+    // Charge lourde : 4 notes au lieu de 7
+    const arpPattern = isHeavyLoad
+      ? [root + '3', third + '4', fifth + '4', root + '5']
+      : [root + '3', third + '3', fifth + '3', root + '4', third + '4', fifth + '4', root + '5'];
     const arpDuration = durationSec * 0.7;
     const startOffset = durationSec * 0.05;
     const noteSpacing = arpDuration / arpPattern.length;
